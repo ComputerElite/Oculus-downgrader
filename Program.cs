@@ -41,8 +41,9 @@ namespace RIFT_Downgrader
                 Console.WriteLine("[1] Downgrade Beat Saber");
                 Console.WriteLine("[2] Downgrade another Rift app");
                 Console.WriteLine("[3] Launch App");
-                Console.WriteLine("[4] Update access_token");
-                Console.WriteLine("[5] Exit");
+                Console.WriteLine("[4] Open app installation directory");
+                Console.WriteLine("[5] Update access_token");
+                Console.WriteLine("[6] Exit");
                 Console.ForegroundColor = ConsoleColor.Blue;
                 Console.Write("Choice: ");
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -59,16 +60,19 @@ namespace RIFT_Downgrader
                         LaunchApp();
                         break;
                     case "4":
-                        UpdateAccessToken();
+                        LaunchApp(true);
                         break;
                     case "5":
+                        UpdateAccessToken();
+                        break;
+                    case "6":
                         System.Environment.Exit(0);
                         break;
                 }
             }
         }
 
-        public void LaunchApp()
+        public void LaunchApp(bool openDir = false)
         {
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
@@ -144,8 +148,16 @@ namespace RIFT_Downgrader
             Console.WriteLine("Loading manifest");
             string baseDirectory = exe + "apps\\" + selected.id + "\\" + selectedVersion.id + "\\";
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
-            Console.WriteLine("Launching");
-            Process.Start(baseDirectory + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+            if(openDir)
+            {
+                Console.WriteLine("Opening directory");
+                Process.Start("explorer", "/select," + baseDirectory);
+            } else
+            {
+                Console.WriteLine("Launching");
+                Process.Start(baseDirectory + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+            }
+            
         }
 
         public void StoreSearch()
