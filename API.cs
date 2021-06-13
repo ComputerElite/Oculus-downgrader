@@ -126,6 +126,7 @@ namespace Oculus.API
     {
         public string appId { get; set; } = "";
         public string launchFile { get; set; } = "";
+        public string launchParameters { get; set; } = null;
         public Dictionary<string, ManifestFile> files { get; set; } = new Dictionary<string, ManifestFile>();
     }
 

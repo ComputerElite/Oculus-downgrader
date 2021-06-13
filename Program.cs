@@ -29,7 +29,7 @@ namespace RIFT_Downgrader
         public static string RiftBSAppId = "1304877726278670";
         public static string RiftPolygonNightmareAppId = "1333056616777885";
         public static string access_token = "";
-        public static string version = "1.0";
+        public static string version = "1.1";
         public static Config config = Config.LoadConfig();
         public void Menu()
         {
@@ -145,7 +145,7 @@ namespace RIFT_Downgrader
             string baseDirectory = exe + "apps\\" + selected.id + "\\" + selectedVersion.id + "\\";
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
             Console.WriteLine("Launching");
-            Process.Start(baseDirectory + manifest.launchFile);
+            Process.Start(baseDirectory + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
         }
 
         public void StoreSearch()
