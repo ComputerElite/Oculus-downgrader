@@ -5,3 +5,9 @@ Downgrade all rift apps
 
 ## What can it do?
 It can download and install many versions of oculus Rift apps, supports installing multiple versions at once and starts them.
+
+### Credit
+Tool: ComputerElite
+Rift downloading: Oculus
+API found: nyamimi
+API Endpoints found: Lillie
