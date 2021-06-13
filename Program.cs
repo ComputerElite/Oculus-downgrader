@@ -29,6 +29,7 @@ namespace RIFT_Downgrader
         public static string RiftBSAppId = "1304877726278670";
         public static string RiftPolygonNightmareAppId = "1333056616777885";
         public static string access_token = "";
+        public static string version = "1.0";
         public static Config config = Config.LoadConfig();
         public void Menu()
         {
@@ -489,9 +490,30 @@ namespace RIFT_Downgrader
 
         public void SetupProgram()
         {
+            Console.WriteLine();
             Console.WriteLine("Setting up Program directory");
             CreateDirectoryIfNotExisting(exe + "apps");
             Console.WriteLine("Finished");
+            Console.WriteLine("Checking for updates");
+            try
+            {
+                WebClient c = new WebClient();
+                c.Headers.Add("user-agent", "RiftDowngrader/" + version);
+                String tags = c.DownloadString("https://api.github.com/repos/ComputerElite/Rift-downgrader/tags");
+                List<GitHubTag> ts = JsonSerializer.Deserialize<List<GitHubTag>>(tags);
+                if (ts.Count > 0 && ts[0].name != version)
+                {
+                    Console.WriteLine("\nA new update is available (Current: " + version + "; New: " + ts[0].name + ")! Download it from https://github.com/ComputerElite/Rift-downgrader/releases/latest");
+                    Console.WriteLine();
+                }
+                else
+                {
+                    Console.WriteLine("no Updates available");
+                }
+            } catch
+            {
+                Console.WriteLine("Couldn't check for updates");
+            }
         }
 
         public void CreateDirectoryIfNotExisting(string path)
@@ -504,5 +526,10 @@ namespace RIFT_Downgrader
             if (Directory.Exists(path)) Directory.Delete(path, true);
             Directory.CreateDirectory(path);
         }
+    }
+
+    public class GitHubTag
+    {
+        public string name { get; set; } = "";
     }
 }
