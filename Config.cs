@@ -8,6 +8,8 @@ namespace RIFT_Downgrader
     public class Config
     {
         public string access_token { get; set; } = "";
+        public string oculusSoftwareFolder { get; set; } = "C:\\Program Files\\Oculus\\Software";
+        public bool oculusSoftwareFolderSet { get; set; } = false;
         public List<App> apps { get; set; } = new List<App>();
 
         public static Config LoadConfig()

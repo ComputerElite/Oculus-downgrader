@@ -10,16 +10,110 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Net;
 using System.IO.Compression;
+using System.Threading;
 
 namespace RIFT_Downgrader
 {
     class Program
     {
+        [STAThread]
         static void Main(string[] args)
         {
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancle a action by closing the program.");
+            if(args.Length == 1 && args[0] == "--update")
+            {
+                Updater u = new Updater();
+                u.Update();
+                return;
+            }
             DowngradeManager m = new DowngradeManager();
             m.Menu();
+        }
+    }
+
+    public class Updater
+    {
+        public static string version = "1.1";
+        public bool CheckUpdate()
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("Checking for updates");
+            UpdateEntry latest = GetLatestVersion();
+            if (latest.comparedToCurrentVersion == 1) {
+                Console.WriteLine("New update availabel! Current version: " + version + ", latest version: " + latest.Version);
+                return true;
+            }
+            else if(latest.comparedToCurrentVersion == -2)
+            {
+                Console.WriteLine("An Error occured while checking for updates");
+            }
+            else if (latest.comparedToCurrentVersion == -1)
+            {
+                Console.WriteLine("Have fun on a preview version (" + version + "). You can downgrade to the latest stable release (" + latest.Version + ") by pressing enter.");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine("You are on the newest version");
+            }
+            return false;
+        }
+
+        public UpdateEntry GetLatestVersion()
+        {
+            try
+            {
+                WebClient c = new WebClient();
+                c.Headers.Add("user-agent", "RiftDowngrader/" + version);
+                String json = c.DownloadString("https://raw.githubusercontent.com/ComputerElite/Rift-downgrader/main/update.json");
+                UpdateFile updates = JsonSerializer.Deserialize<UpdateFile>(json);
+                UpdateEntry latest = updates.Updates[0];
+                latest.comparedToCurrentVersion = latest.GetVersion().CompareTo(new System.Version(version));
+                return latest;
+            } catch
+            {
+                return new UpdateEntry();
+            }
+            
+        }
+
+        public void Update()
+        {
+            Console.WriteLine("Rift downgrader started in update mode. Fetching newest version");
+            UpdateEntry e = GetLatestVersion();
+            Console.WriteLine("Updating to version " + e.Version + ". Starting download (this may take a few seconds)");
+            WebClient c = new WebClient();
+            c.DownloadFile(e.Download, DowngradeManager.exe + "update.zip");
+            Console.WriteLine("Unpacking update");
+            string destDir = new DirectoryInfo(Path.GetDirectoryName(DowngradeManager.exe)).Parent.FullName + "\\";
+            using (ZipArchive archive = ZipFile.OpenRead(DowngradeManager.exe + "update.zip"))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    String name = entry.FullName;
+                    if (name.EndsWith("/")) continue;
+                    if (name.Contains("/")) Directory.CreateDirectory(destDir + System.IO.Path.GetDirectoryName(name));
+                    entry.ExtractToFile(destDir + entry.FullName, true);
+                }
+            }
+            File.Delete(DowngradeManager.exe + "update.zip");
+            Console.WriteLine("Updated to version " + e.Version + ". Changelog:\n" + e.Changelog + "\n\nStart Rift downgrader by pressing any key");
+            Console.ReadKey();
+            Process.Start(destDir + "RIFT Downgrader.exe");
+        }
+
+        public void StartUpdate()
+        {
+            Console.WriteLine("Duplicating required files");
+            if (Directory.Exists(DowngradeManager.exe + "updater")) Directory.Delete(DowngradeManager.exe + "updater", true);
+            Directory.CreateDirectory(DowngradeManager.exe + "updater");
+            foreach(string f in Directory.GetFiles(DowngradeManager.exe))
+            {
+                File.Copy(f, DowngradeManager.exe + "updater\\" + Path.GetFileName(f), true);
+            }
+            Console.WriteLine("Starting update.");
+            Process.Start(DowngradeManager.exe + "updater\\" + Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location), "--update");
+            Environment.Exit(0);
         }
     }
 
@@ -29,7 +123,6 @@ namespace RIFT_Downgrader
         public static string RiftBSAppId = "1304877726278670";
         public static string RiftPolygonNightmareAppId = "1333056616777885";
         public static string access_token = "";
-        public static string version = "1.1";
         public static Config config = Config.LoadConfig();
         public void Menu()
         {
@@ -43,7 +136,8 @@ namespace RIFT_Downgrader
                 Console.WriteLine("[3] Launch App");
                 Console.WriteLine("[4] Open app installation directory");
                 Console.WriteLine("[5] Update access_token");
-                Console.WriteLine("[6] Exit");
+                Console.WriteLine("[6] Update oculus folder");
+                Console.WriteLine("[7] Exit");
                 Console.ForegroundColor = ConsoleColor.Blue;
                 Console.Write("Choice: ");
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -66,6 +160,9 @@ namespace RIFT_Downgrader
                         UpdateAccessToken();
                         break;
                     case "6":
+                        CheckOculusFolder(true);
+                        break;
+                    case "7":
                         System.Environment.Exit(0);
                         break;
                 }
@@ -154,10 +251,79 @@ namespace RIFT_Downgrader
                 Process.Start("explorer", "/select," + baseDirectory);
             } else
             {
+                CheckOculusFolder();
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("Copying application (this can take a few minutes)");
+                DirectoryCopy(baseDirectory, config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, true);
+                File.Copy(baseDirectory + "manifest.json", config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json", true);
+                File.WriteAllText(config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json.mini", JsonSerializer.Serialize(manifest.GetMinimal()));
                 Console.WriteLine("Launching");
-                Process.Start(baseDirectory + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+                Process.Start(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName + "\\" + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
             }
             
+        }
+
+        private void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
+        {
+            // Get the subdirectories for the specified directory.
+            try
+            {
+                if (Directory.Exists(destDirName)) Directory.Delete(destDirName, true);
+            }
+            catch { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine("Couldn't delete " + destDirName); Console.ForegroundColor = ConsoleColor.White; }
+
+            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
+
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException(
+                    "Source directory does not exist or could not be found: "
+                    + sourceDirName);
+            }
+
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            // If the destination directory doesn't exist, create it.       
+            Directory.CreateDirectory(destDirName);
+
+            // Get the files in the directory and copy them to the new location.
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                try
+                {
+                    Console.WriteLine("Copying " + file.Name);
+                    string tempPath = System.IO.Path.Combine(destDirName, file.Name);
+                    file.CopyTo(tempPath, true);
+                }
+                catch { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine("ERROR copying " + file.Name); Console.ForegroundColor = ConsoleColor.White; }
+            }
+
+            // If copying subdirectories, copy them and their contents to new location.
+            if (copySubDirs)
+            {
+                foreach (DirectoryInfo subdir in dirs)
+                {
+                    string tempPath = System.IO.Path.Combine(destDirName, subdir.Name);
+                    DirectoryCopy(subdir.FullName, tempPath, copySubDirs);
+                }
+            }
+        }
+
+        public void CheckOculusFolder(bool set = false)
+        {
+            if(!config.oculusSoftwareFolderSet || set)
+            {
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                string f = Console.ReadLine();
+                config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
+                config.oculusSoftwareFolderSet = true;
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("Saving");
+                config.Save();
+            }
         }
 
         public void StoreSearch()
@@ -506,25 +672,17 @@ namespace RIFT_Downgrader
             Console.WriteLine("Setting up Program directory");
             CreateDirectoryIfNotExisting(exe + "apps");
             Console.WriteLine("Finished");
-            Console.WriteLine("Checking for updates");
-            try
+            Updater u = new Updater();
+            if(u.CheckUpdate())
             {
-                WebClient c = new WebClient();
-                c.Headers.Add("user-agent", "RiftDowngrader/" + version);
-                String tags = c.DownloadString("https://api.github.com/repos/ComputerElite/Rift-downgrader/tags");
-                List<GitHubTag> ts = JsonSerializer.Deserialize<List<GitHubTag>>(tags);
-                if (ts.Count > 0 && ts[0].name != version)
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write("Do you want to update? (Y/n): ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                string choice = Console.ReadLine();
+                if(choice.ToLower() == "y" || choice == "")
                 {
-                    Console.WriteLine("\nA new update is available (Current: " + version + "; New: " + ts[0].name + ")! Download it from https://github.com/ComputerElite/Rift-downgrader/releases/latest");
-                    Console.WriteLine();
+                    u.StartUpdate();
                 }
-                else
-                {
-                    Console.WriteLine("no Updates available");
-                }
-            } catch
-            {
-                Console.WriteLine("Couldn't check for updates");
             }
         }
 
