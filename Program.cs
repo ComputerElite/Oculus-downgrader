@@ -19,7 +19,7 @@ namespace RIFT_Downgrader
         [STAThread]
         static void Main(string[] args)
         {
-            Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancle a action by closing the program.");
+            Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             if(args.Length == 1 && args[0] == "--update")
             {
                 Updater u = new Updater();
@@ -241,7 +241,7 @@ namespace RIFT_Downgrader
                 }
             }
             ReleaseChannelReleaseBinary selectedVersion = versionBinary[ver];
-
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Loading manifest");
             string baseDirectory = exe + "apps\\" + selected.id + "\\" + selectedVersion.id + "\\";
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
@@ -253,12 +253,42 @@ namespace RIFT_Downgrader
             {
                 CheckOculusFolder();
                 Console.ForegroundColor = ConsoleColor.White;
+                string appDir = config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName + "\\";
                 Console.WriteLine("Copying application (this can take a few minutes)");
+                if (File.Exists(appDir + "manifest.json"))
+                {
+                    Manifest existingManifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(appDir + "manifest.json"));
+                    if(existingManifest.versionCode == manifest.versionCode)
+                    {
+                        Console.WriteLine("Version is already in the library folder. Launching");
+                        Process.Start(appDir + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+                        return;
+                    } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
+                    {
+                        String installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
+                        Console.Write("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version +  " for next time you launch that version? (Y/n): ");
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        string choice = Console.ReadLine();
+                        Console.ForegroundColor = ConsoleColor.White;
+                        if (choice.ToLower() == "y" || choice == "")
+                        {
+                            Console.WriteLine("Copying from Oculus to app directory");
+                            DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.id + "\\" + installedId, true);
+                        }
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("Finished\n");
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine("Copying from app directory to oculus");
+                    }
+                }
+                
                 DirectoryCopy(baseDirectory, config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, true);
                 File.Copy(baseDirectory + "manifest.json", config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json", true);
                 File.WriteAllText(config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json.mini", JsonSerializer.Serialize(manifest.GetMinimal()));
-                Console.WriteLine("Launching");
-                Process.Start(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName + "\\" + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+                File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.id);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Finished.\nLaunching");
+                Process.Start(appDir + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
             }
             
         }
