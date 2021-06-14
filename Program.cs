@@ -138,14 +138,10 @@ namespace RIFT_Downgrader
                 Console.WriteLine("[5] Update access_token");
                 Console.WriteLine("[6] Update oculus folder");
                 Console.WriteLine("[7] Exit");
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.Write("Choice: ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                switch (Console.ReadLine())
+                switch (QuestionString("Choice: "))
                 {
                     case "1":
                         ShowVersions(RiftBSAppId);
-                        //ShowVersions(RiftPolygonNightmareAppId);
                         break;
                     case "2":
                         StoreSearch();
@@ -174,6 +170,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Console.WriteLine("Downloaded apps");
+            Console.WriteLine();
             Dictionary<string, App> nameApp = new Dictionary<string, App>();
             foreach(App a in config.apps)
             {
@@ -185,10 +182,7 @@ namespace RIFT_Downgrader
             string sel = "";
             while (!choosen)
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.Write("Which app do you want to launch: ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                sel = Console.ReadLine();
+                sel = QuestionString("Which app do you want to launch: ");
                 if (nameApp.ContainsKey(sel.ToLower()))
                 {
                     choosen = true;
@@ -225,11 +219,8 @@ namespace RIFT_Downgrader
             string ver = "";
             while (!choosen)
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
                 Console.WriteLine();
-                Console.Write("Which version do you want?: ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                ver = Console.ReadLine();
+                ver = QuestionString("Which version do you want?: ");
                 if (!versionBinary.ContainsKey(ver))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -242,6 +233,8 @@ namespace RIFT_Downgrader
             }
             ReleaseChannelReleaseBinary selectedVersion = versionBinary[ver];
             Console.ForegroundColor = ConsoleColor.White;
+
+
             Console.WriteLine("Loading manifest");
             string baseDirectory = exe + "apps\\" + selected.id + "\\" + selectedVersion.id + "\\";
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
@@ -266,10 +259,7 @@ namespace RIFT_Downgrader
                     } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
                     {
                         String installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
-                        Console.Write("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version +  " for next time you launch that version? (Y/n): ");
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        string choice = Console.ReadLine();
-                        Console.ForegroundColor = ConsoleColor.White;
+                        string choice = QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
                         if (choice.ToLower() == "y" || choice == "")
                         {
                             Console.WriteLine("Copying from Oculus to app directory");
@@ -344,10 +334,7 @@ namespace RIFT_Downgrader
         {
             if(!config.oculusSoftwareFolderSet || set)
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.Write("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                string f = Console.ReadLine();
+                string f = QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
                 config.oculusSoftwareFolderSet = true;
                 Console.ForegroundColor = ConsoleColor.White;
@@ -358,11 +345,8 @@ namespace RIFT_Downgrader
 
         public void StoreSearch()
         {
-            Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine();
-            Console.Write("Search term: ");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            string term = Console.ReadLine();
+            string term = QuestionString("Search term: ");
             GraphQLClient cl = GraphQLClient.StoreSearch(term);
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Requesting results");
@@ -393,10 +377,7 @@ namespace RIFT_Downgrader
             string sel = "";
             while(!choosen)
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.Write("App Name: ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                sel = Console.ReadLine();
+                sel = QuestionString("App name: ");
                 if(nameId.ContainsKey(sel.ToLower()))
                 {
                     choosen = true;
@@ -463,12 +444,8 @@ namespace RIFT_Downgrader
             string ver = "";
             while(!choosen)
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.WriteLine();
-                Console.Write("Which version do you want?: ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                ver = Console.ReadLine();
-                if(!versionBinary.ContainsKey(ver))
+                ver = QuestionString("Which version do you want?: ");
+                if (!versionBinary.ContainsKey(ver))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("This version does not exist.");
@@ -482,22 +459,13 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Console.WriteLine(selected.ToString());
             Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.Write("Do you want to download this version? (Y/n): ");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            string choice = Console.ReadLine();
+            string choice = QuestionString("Do you want to download this version? (Y/n): ");
             if (choice.ToLower() == "y" || choice == "")
             {
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
-                    Console.ForegroundColor = ConsoleColor.Blue;
-                    Console.Write("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (y/N): ");
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    choice = Console.ReadLine();
-                    if(choice.ToLower() != "y")
-                    {
-                        return;
-                    }
+                    choice = QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (y/N): ");
+                    if (choice.ToLower() != "y") return;
                     RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
                 }
                 StartDownload(selected, appId, appName);
@@ -511,30 +479,15 @@ namespace RIFT_Downgrader
         public string ByteSizeToString(long input, int decimals = 2)
         {
             // TB
-            if (input > 1099511627776)
-            {
-                return (input / 1099511627776).ToString("D" + decimals) + " TB";
-            }
+            if (input > 1099511627776) return (input / 1099511627776).ToString("D" + decimals) + " TB";
             // GB
-            else if (input > 1073741824)
-            {
-                return (input / 1073741824).ToString("D" + decimals) + " GB";
-            }
+            else if (input > 1073741824) return (input / 1073741824).ToString("D" + decimals) + " GB";
             // MB
-            else if (input > 1048576)
-            {
-                return (input / 1048576).ToString("D" + decimals) + " MB";
-            }
+            else if (input > 1048576) return (input / 1048576).ToString("D" + decimals) + " MB";
             // KB
-            else if (input > 1024)
-            {
-                return (input / 1024).ToString("D" + decimals) + " KB";
-            }
+            else if (input > 1024) return (input / 1024).ToString("D" + decimals) + " KB";
             // Bytes
-            else
-            {
-                return input + " Bytes";
-            }
+            else return input + " Bytes";
         }
 
         public void StartDownload(ReleaseChannelReleaseBinary binary, string appId, string appName)
@@ -583,7 +536,6 @@ namespace RIFT_Downgrader
             foreach (KeyValuePair<string, ManifestFile> f in manifest.files)
             {
                 i++;
-                Console.WriteLine(f.Key);
                 if (File.Exists(baseDirectory + f.Key))
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -628,14 +580,8 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Finished");
             Console.ForegroundColor = ConsoleColor.Red;
-            if(suceeded == 0)
-            {
-                Console.WriteLine("No files could be downloaded. " + i + " files had to be downloaded. Please contact ComputerElite so this issue gets fixed.");
-            } else if(suceeded != i)
-            {
-                Console.WriteLine("Only " + suceeded + " out of " + i + " files could be downloaded. Please try it again to make sure no files are missing.");
-            }
-            
+            if(suceeded == 0) Console.WriteLine("No files could be downloaded. " + i + " files had to be downloaded. Please contact ComputerElite so this issue gets fixed.");
+            else if(suceeded != i) Console.WriteLine("Only " + suceeded + " out of " + i + " files could be downloaded. Please try it again to make sure no files are missing.");
         }
 
         public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
@@ -652,10 +598,7 @@ namespace RIFT_Downgrader
             if (IsTokenValid(config.access_token) && onlyIfNeeded) return true;
             Console.WriteLine();
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.Write("Do you need a guide on how to get the access token? (Y/n): ");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            string choice = Console.ReadLine();
+            string choice = QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             if (choice.ToLower() == "y" || choice == "")
             {
@@ -664,17 +607,13 @@ namespace RIFT_Downgrader
             }
             Console.WriteLine();
             Console.WriteLine("Please enter your access_token (it'll be saved locally and is used to authenticate downloads)");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.Write("access_token: ");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            string at = Console.ReadLine();
+            string at = QuestionString("access_token: ");
             String[] parts = at.Split(':');
             if(parts.Length >= 2)
             {
                 at = parts[2];
             }
             at = at.Replace(" ", "");
-            Console.ForegroundColor = ConsoleColor.White;
             if (IsTokenValid(at))
             {
                 Console.WriteLine("Saving token");
@@ -705,15 +644,21 @@ namespace RIFT_Downgrader
             Updater u = new Updater();
             if(u.CheckUpdate())
             {
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.Write("Do you want to update? (Y/n): ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                string choice = Console.ReadLine();
-                if(choice.ToLower() == "y" || choice == "")
+                string choice = QuestionString("Do you want to update? (Y/n): ");
+                if (choice.ToLower() == "y" || choice == "")
                 {
                     u.StartUpdate();
                 }
             }
+        }
+
+        public string QuestionString(string question)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write(question);
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.ForegroundColor = ConsoleColor.White;
+            return Console.ReadLine();
         }
 
         public void CreateDirectoryIfNotExisting(string path)
