@@ -29,6 +29,12 @@ namespace RIFT_Downgrader
         public string name { get; set; } = "N/A";
         public string id { get; set; } = "";
         public List<ReleaseChannelReleaseBinary> versions { get; set; } = new List<ReleaseChannelReleaseBinary>();
+        public App() { }
+        public App(string name, string id)
+        {
+            this.name = name;
+            this.id = id;
+        }
     }
 
     public class AppVersion
@@ -36,5 +42,17 @@ namespace RIFT_Downgrader
         public string id { get; set; } = "";
         public string version { get; set; } = "";
         public string version_code { get; set; } = "";
+    }
+
+    public class AppReturnVersion
+    {
+        public App app { get; set; } = new App();
+        public ReleaseChannelReleaseBinary version { get; set; } = new ReleaseChannelReleaseBinary();
+
+        public AppReturnVersion(App app, ReleaseChannelReleaseBinary version)
+        {
+            this.app = app;
+            this.version = version;
+        }
     }
 }

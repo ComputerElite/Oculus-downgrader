@@ -78,7 +78,7 @@ namespace Oculus.API
 
         public override string ToString()
         {
-            return "Version: " + version + "(" + id + ")\nChangelog: " + change_log;
+            return "Version: " + version + " (" + id + ")\nChangelog: " + change_log;
         }
     }
 
