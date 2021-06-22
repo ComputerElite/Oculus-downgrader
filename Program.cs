@@ -364,7 +364,13 @@ namespace RIFT_Downgrader
                 Process.Start("explorer", "/select," + baseDirectory);
             } else
             {
-                CheckOculusFolder();
+                if(!CheckOculusFolder())
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Aborting since oculus software folder isn't set.");
+                    Logger.Log("Aborting since oculus software folder isn't set", LoggingType.Warning);
+                    return;
+                }
                 Console.ForegroundColor = ConsoleColor.White;
                 string appDir = config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName + "\\";
                 Logger.Log("Starting app copy to " + appDir);
@@ -460,21 +466,47 @@ namespace RIFT_Downgrader
             }
         }
 
-        public void CheckOculusFolder(bool set = false)
+        public bool CheckOculusFolder(bool set = false)
         {
             if(!config.oculusSoftwareFolderSet || set)
             {
                 Logger.Log("Asking user for Oculus folder");
                 string f = QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
+                string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
                 if (config.oculusSoftwareFolder.EndsWith("\\")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 1);
                 if (config.oculusSoftwareFolder.EndsWith("\\Software\\Software")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 9);
+                if(!Directory.Exists(config.oculusSoftwareFolder))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("This folder does not exist. Try setting the folder again to a valid folder via the option in the main menu");
+                    Logger.Log("User wanted to set a non existent folder as oculus software directory: " + config.oculusSoftwareFolder + ". Falling back to " + before, LoggingType.Warning);
+                    config.oculusSoftwareFolder = before;
+                    return false;
+                }
+                if (!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
+                    Logger.Log(config.oculusSoftwareFolder + " does not contain Software folder. Falling back to " + before, LoggingType.Warning);
+                    config.oculusSoftwareFolder = before;
+                    return false;
+                }
+                if (!Directory.Exists(config.oculusSoftwareFolder + "\\Manifests"))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("This folder does not contain a Manifests directory where your games manifests are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
+                    Logger.Log(config.oculusSoftwareFolder + " does not contain Manifests folder. Falling back to " + before, LoggingType.Warning);
+                    config.oculusSoftwareFolder = before;
+                    return false;
+                }
                 config.oculusSoftwareFolderSet = true;
                 Logger.Log("Oculus folder set to " + config.oculusSoftwareFolder + ". Saving config");
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("Saving");
                 config.Save();
             }
+            return true;
         }
 
         public void StoreSearch()
