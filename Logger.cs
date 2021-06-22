@@ -15,7 +15,8 @@ namespace RIFT_Downgrader
         {
             //Remove username
             text = Regex.Replace(text, @"([A-Z]{1}\:\\[Uu]sers\\)([^\\]*\\)(.*)", "$1$3");
-            File.AppendAllText(logFile, "\n" + GetLinePrefix(loggingType) + text);
+            string linePrefix = GetLinePrefix(loggingType);
+            File.AppendAllText(logFile, "\n" + linePrefix + text.Replace("\n", "\n" + linePrefix));
         }
         public static void LogRaw(string text)
         {
@@ -40,6 +41,7 @@ namespace RIFT_Downgrader
         Info = 0,
         Warning = 1,
         Error = 2,
-        Debug = 3
+        Debug = 3,
+        Crash = 4
     }
 }

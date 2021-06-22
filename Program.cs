@@ -21,6 +21,7 @@ namespace RIFT_Downgrader
         static void Main(string[] args)
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
+            SetupExceptionHandlers();
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + Updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -34,11 +35,33 @@ namespace RIFT_Downgrader
             DowngradeManager m = new DowngradeManager();
             m.Menu();
         }
+
+        public static void SetupExceptionHandlers()
+        {
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            HandleExtenption((Exception)e.ExceptionObject, "AppDomain.CurrentDomain.UnhandledException");
+
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                HandleExtenption(e.Exception, "TaskScheduler.UnobservedTaskException");
+                e.SetObserved();
+            };
+        }
+
+        public static void HandleExtenption(Exception e, string source)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Logger.Log("An unhandled exception has occured:\n" + e.ToString(), LoggingType.Crash);
+            Console.WriteLine("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fix. Press any key to close out.");
+            Console.ReadKey();
+            Logger.Log("Exiting cause of unhandled exception.");
+            Environment.Exit(0);
+        }
     }
 
     public class Updater
     {
-        public static string version = "1.1.1";
+        public static string version = "1.1.2";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
