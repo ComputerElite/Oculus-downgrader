@@ -61,7 +61,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.1.2";
+        public static string version = "1.1.3";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;

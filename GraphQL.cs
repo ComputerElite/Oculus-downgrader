@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using Oculus.API;
+using RIFT_Downgrader;
 
 namespace ComputerUtils.GraphQL
 {
@@ -28,13 +29,35 @@ namespace ComputerUtils.GraphQL
         public string Request(GraphQLOptions options)
         {
             WebClient c = new WebClient();
-            return c.UploadString(uri, "POST", options.ToString());
+            Logger.Log("Doing POST Request to " + uri + " with args " + options.ToString());
+            try
+            {
+                string returning = c.UploadString(uri, "POST", options.ToString());
+                return returning;
+            } catch (WebException e)
+            {
+                Logger.Log("Request failed (" + e.Status + "): \n" + new StreamReader(e.Response.GetResponseStream()).ReadToEnd(), LoggingType.Error);
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Request to Oculus failed. Please try again later and/or contact ComputerElite.");
+                throw new Exception(e.Status.ToString().StartsWith("4") ? "I fuqed up" : "Some Request to Oculus failed so yeah idk how to handle it.");
+            }
+            
         }
 
         public string Request()
         {
             WebClient c = new WebClient();
-            return c.UploadString(uri + "?" + this.options.ToString(), "POST", "");
+            Logger.Log("Doing POST Request to " + uri + " with args " + options.ToString());
+            try {
+                return c.UploadString(uri + "?" + this.options.ToString(), "POST", "");
+            }
+            catch (WebException e)
+            {
+                Logger.Log("Request failed (" + e.Status + "): \n" + new StreamReader(e.Response.GetResponseStream()).ReadToEnd(), LoggingType.Error);
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Request to Oculus failed. Please try again later and/or contact ComputerElite.");
+                throw new Exception(e.Status.ToString().StartsWith("4") ? "I fuqed up" : "Some Request to Oculus failed so yeah idk how to handle it.");
+            }
         }
 
         public static GraphQLClient VersionHistory(int appid)
