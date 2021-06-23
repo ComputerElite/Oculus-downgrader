@@ -11,6 +11,7 @@ namespace RIFT_Downgrader
         public string oculusSoftwareFolder { get; set; } = "C:\\Program Files\\Oculus\\Software";
         public bool oculusSoftwareFolderSet { get; set; } = false;
         public List<App> apps { get; set; } = new List<App>();
+        public Headset headset { get; set; } = Headset.RIFT;
 
         public static Config LoadConfig()
         {
@@ -28,6 +29,7 @@ namespace RIFT_Downgrader
     {
         public string name { get; set; } = "N/A";
         public string id { get; set; } = "";
+        public Headset headset { get; set; } = Headset.RIFT;
         public List<ReleaseChannelReleaseBinary> versions { get; set; } = new List<ReleaseChannelReleaseBinary>();
         public App() { }
         public App(string name, string id)
