@@ -12,7 +12,8 @@ using System.Net;
 using System.IO.Compression;
 using System.Threading;
 using System.Security.Cryptography;
-using ADB;
+using ComputerUtils.ADB;
+using ComputerUtils.Logging;
 
 namespace RIFT_Downgrader
 {
@@ -62,7 +63,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.0";
+        public static string version = "1.2.1";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -447,9 +448,9 @@ namespace RIFT_Downgrader
                     return;
                 }
                 ADBInteractor interactor = new ADBInteractor();
-                Console.WriteLine("Installing apk to Quest if connected:");
+                Console.WriteLine("Installing apk to Quest if connected (this can take a minute):");
                 Logger.Log("Installing apk");
-                if(!interactor.adb("install -r \"" + apk + "\""))
+                if(!interactor.adb("install -d \"" + apk + "\""))
                 {
                     Logger.Log("Install failed", LoggingType.Warning);
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -457,7 +458,7 @@ namespace RIFT_Downgrader
                     return;
                 }
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("APK Installed. You should now be able to install it from your Quest");
+                Console.WriteLine("APK Installed. You should now be able to launch it from your Quest");
                 return;
             }
             Logger.Log("Launching selected version");
@@ -986,7 +987,7 @@ namespace RIFT_Downgrader
 
         public void CreateDirectoryIfNotExisting(string path)
         {
-            if (Directory.Exists(path)) Directory.CreateDirectory(path);
+            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
         }
 
         public void RecreateDirectoryIfExisting(string path)
@@ -994,12 +995,6 @@ namespace RIFT_Downgrader
             if (Directory.Exists(path)) Directory.Delete(path, true);
             Directory.CreateDirectory(path);
         }
-    }
-
-    public enum Headset
-    {
-        RIFT = 0,
-        MONTEREY = 1 //aka quest
     }
 
     public class GitHubTag

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using ComputerUtils.GraphQL;
 using Oculus.API;
 
 namespace RIFT_Downgrader

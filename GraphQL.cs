@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using Oculus.API;
 using RIFT_Downgrader;
+using ComputerUtils.Logging;
 
 namespace ComputerUtils.GraphQL
 {
