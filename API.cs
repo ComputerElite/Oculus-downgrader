@@ -32,6 +32,8 @@ namespace Oculus.API
     }
 
 
+
+
     public class ReleaseChannelReleasesSkeleton
     {
         public ReleaseChannelReleasesNode data { get; set; } = new ReleaseChannelReleasesNode();
@@ -68,6 +70,7 @@ namespace Oculus.API
         public ReleaseChannelReleaseBinary node { get; set; } = new ReleaseChannelReleaseBinary();
     }
 
+    //aka generic version
     public class ReleaseChannelReleaseBinary
     {
         public string change_log { get; set; } = "";
@@ -81,6 +84,41 @@ namespace Oculus.API
             return "Version: " + version + " (" + id + ")\nChangelog: " + change_log;
         }
     }
+
+
+
+
+
+    public class ShortStoreSearchResultSkeleton
+    {
+        public ShortStoreSearchResultSearch data { get; set; } = new ShortStoreSearchResultSearch();
+    }
+
+    public class ShortStoreSearchResultSearch
+    {
+        public ShortStoreSearchResultResult application_search { get; set; } = new ShortStoreSearchResultResult();
+    }
+    public class ShortStoreSearchResultResult
+    {
+        public ShortStoreSearchResultResults results { get; set; } = new ShortStoreSearchResultResults();
+    }
+
+    public class ShortStoreSearchResultResults
+    {
+        public List<ShortStoreSearchSearchResult> edges { get; set; } = new List<ShortStoreSearchSearchResult>();
+    }
+
+    public class ShortStoreSearchSearchResult
+    {
+        public ShortStoreSearchSearchResultNode node { get; set; } = new ShortStoreSearchSearchResultNode();
+    }
+
+    public class ShortStoreSearchSearchResultNode
+    {
+        public string id { get; set; } = "";
+        public string display_name { get; set; } = "";
+    }
+
 
     public class StoreSearchResultSkeleton
     {
@@ -122,6 +160,82 @@ namespace Oculus.API
         public string id { get; set; } = "";
         public string display_name { get; set; } = "";
     }
+
+
+    public class VersionHistorySkeleton
+    {
+        public VersionHistoryData data { get; set; } = new VersionHistoryData();
+    }
+
+    public class VersionHistoryData
+    {
+        public VersionHistoryNode node { get; set; } = new VersionHistoryNode();
+    }
+
+    public class VersionHistoryNode
+    {
+        public VersionHistorySupportedBinaries supportedBinaries { get; set; } = new VersionHistorySupportedBinaries();
+        public string displayName { get; set; } = "";
+    }
+
+    public class VersionHistorySupportedBinaries
+    {
+        public List<VersionHistoryVersion> edges { get; set; } = new List<VersionHistoryVersion>();
+    }
+
+    public class VersionHistoryVersion
+    {
+        public VersionHistoryVersionNode node { get; set; } = new VersionHistoryVersionNode();
+    }
+
+    public class VersionHistoryVersionNode
+    {
+        public string version { get; set; } = "";
+        public string changeLog { get; set; } = "";
+        public string id { get; set; } = "";
+        public int versionCode { get; set; } = 0;
+
+        public ReleaseChannelReleaseBinary ToReleaseChannelReleaseBinary()
+        {
+            ReleaseChannelReleaseBinary b = new ReleaseChannelReleaseBinary();
+            b.id = id;
+            b.change_log = changeLog;
+            b.version = version;
+            b.version_code = versionCode;
+            return b;
+        }
+    }
+
+
+
+    public class AppRevisionsSkeleton
+    {
+        public AppRevisionsData data { get; set; } = new AppRevisionsData();
+    }
+
+    public class AppRevisionsData
+    {
+        public AppRevisionsNode node { get; set; } = new AppRevisionsNode();
+    }
+
+    public class AppRevisionsNode
+    {
+        public AppRevisionsPrimaryBinaries primary_binaries { get; set; } = new AppRevisionsPrimaryBinaries();
+    }
+
+    public class AppRevisionsPrimaryBinaries
+    {
+        public List<AppRevisionsBinary> nodes { get; set; } = new List<AppRevisionsBinary>();
+    }
+
+    public class AppRevisionsBinary
+    {
+        public string id { get; set; } = "";
+        public string version { get; set; } = "";
+        public int version_code { get; set; } = 0;
+        public long created_date { get; set; } = 0;
+    }
+
 
     public class Manifest
     {

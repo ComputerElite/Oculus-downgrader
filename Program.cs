@@ -14,6 +14,7 @@ using System.Threading;
 using System.Security.Cryptography;
 using ComputerUtils.ADB;
 using ComputerUtils.Logging;
+using ComputerUtils.ConsoleUi;
 
 namespace RIFT_Downgrader
 {
@@ -63,7 +64,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.1";
+        public static string version = "1.2.2";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -624,11 +625,27 @@ namespace RIFT_Downgrader
             Console.WriteLine("Results: ");
             Console.WriteLine();
             Dictionary<string, string> nameId = new Dictionary<string, string>();
-            foreach(StoreSearchResultCategory c in s.data.viewer.contextual_search.all_category_results)
+            /*
+            foreach(StoreSearchSearchResult c in s.data.application_search.results.edges)
             {
-                if(c.name == "APPS")
+                Console.WriteLine(c.node.display_name);
+                Logger.Log("   - " + c.node.display_name);
+                Console.WriteLine(c.node.id);
+                if (c.node.display_name.ToLower() == term.ToLower())
                 {
-                    foreach(StoreSearchSearchResult r in c.search_results.nodes)
+                    Logger.Log("Result is exact match. Auto selecting");
+                    Console.WriteLine("Result is exact match. Auto selecting");
+                    ShowVersions(c.node.id);
+                    return;
+                }
+                nameId.Add(c.node.display_name.ToLower(), c.node.id);
+            }
+            */
+            foreach (StoreSearchResultCategory c in s.data.viewer.contextual_search.all_category_results)
+            {
+                if (c.name == "APPS")
+                {
+                    foreach (StoreSearchSearchResult r in c.search_results.nodes)
                     {
                         Console.WriteLine(r.target_object.display_name);
                         Console.WriteLine("   - " + r.target_object.display_name);
@@ -646,6 +663,12 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             bool choosen = false;
             string sel = "";
+            if(nameId.Count == 0)
+            {
+                Logger.Log("No results found");
+                Console.WriteLine("No results found");
+                return;
+            }
             while(!choosen)
             {
                 sel = QuestionString("App name: ");
@@ -667,35 +690,31 @@ namespace RIFT_Downgrader
             Logger.Log("Showing versions for " + appId);
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
-            Logger.Log("Fetching release channels");
-            Console.WriteLine("Fetching release channels");
-            GraphQLClient client = GraphQLClient.ReleaseChannels(appId);
-            ReleaseChannelSkeleton channels = JsonSerializer.Deserialize<ReleaseChannelSkeleton>(client.Request());
+            UndefinedEndProgressBar undefinedEndProgressBar = new UndefinedEndProgressBar();
+            undefinedEndProgressBar.Start();
+            Logger.Log("Fetching versions");
             List<ReleaseChannelReleaseBinary> versions = new List<ReleaseChannelReleaseBinary>();
-            string appName = "";
-            foreach(ReleaseChannel c in channels.data.node.release_channels.nodes)
+            undefinedEndProgressBar.SetupSpinningWheel(500);
+            undefinedEndProgressBar.UpdateProgress("Fetching Versions");
+            GraphQLClient client = GraphQLClient.VersionHistory(appId);
+            VersionHistorySkeleton versionS = JsonSerializer.Deserialize<VersionHistorySkeleton>(client.Request());
+            string appName = versionS.data.node.displayName;
+            foreach (VersionHistoryVersion v in versionS.data.node.supportedBinaries.edges)
             {
-                Logger.Log("Fetching versions in " + c.channel_name);
-                Console.WriteLine("Fetching versions in " + c.channel_name);
-                client = GraphQLClient.ReleaseChannelReleases(c.id);
-                ReleaseChannelReleasesSkeleton s = JsonSerializer.Deserialize<ReleaseChannelReleasesSkeleton>(client.Request());
-                appName = s.data.node.latest_supported_binary.binary_application.display_name;
-                foreach (ReleaseChannelReleaseBinaryNode b in s.data.node.binaries.edges)
+                versions.Add(v.node.ToReleaseChannelReleaseBinary());
+            }
+            Logger.Log("Fetching release dates of versions");
+            undefinedEndProgressBar.UpdateProgress("Fetching release dates of versions");
+            client = GraphQLClient.AppRevisions(appId);
+            foreach(AppRevisionsBinary b in JsonSerializer.Deserialize<AppRevisionsSkeleton>(client.Request()).data.node.primary_binaries.nodes)
+            {
+                for(int i = 0; i < versions.Count; i++)
                 {
-                    bool exists = false;
-                    foreach (ReleaseChannelReleaseBinary e in versions)
-                    {
-                        if (e.id == b.node.id)
-                        {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if (!exists) versions.Add(b.node);
+                    if (versions[i].id == b.id) versions[i].created_date = b.created_date;
                 }
             }
             Logger.Log("Fetching versions from online cache");
-            Console.WriteLine("Fetching versions from online cache");
+            undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
             WebClient webClient = new WebClient();
             Logger.Log("Requesting apps in cache from https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json");
             List<string> apps = JsonSerializer.Deserialize<List<string>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
@@ -721,6 +740,7 @@ namespace RIFT_Downgrader
                 Logger.Log("No online entry existing");
                 Console.WriteLine("No online entry existing");
             }
+            undefinedEndProgressBar.StopSpinningWheel();
             Console.WriteLine("Date is in format DD-MM-YYYY");
             Logger.Log("Versions of " + appName);
             Console.WriteLine("Versions of " + appName);
