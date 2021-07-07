@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using ComputerUtils.ADB;
 using ComputerUtils.Logging;
 using ComputerUtils.ConsoleUi;
+using ComputerUtils.FileManaging;
 
 namespace RIFT_Downgrader
 {
@@ -64,7 +65,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.2";
+        public static string version = "1.2.4";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -495,7 +496,7 @@ namespace RIFT_Downgrader
                     {
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
-                        DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\" + installedId, true);
+                        FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\" + installedId, true);
                     }
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("Finished\n");
@@ -505,7 +506,7 @@ namespace RIFT_Downgrader
                 }
             }
             Logger.Log("Copying game");
-            DirectoryCopy(baseDirectory, config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, true);
+            FileManager.DirectoryCopy(baseDirectory, config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, true);
             Logger.Log("Copying manifest");
             File.Copy(baseDirectory + "manifest.json", config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json", true);
             Logger.Log("Adding minimal manifest");
@@ -516,54 +517,6 @@ namespace RIFT_Downgrader
             Console.WriteLine("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
             Process.Start(appDir + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
-        }
-
-        private void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
-        {
-            // Get the subdirectories for the specified directory.
-            try
-            {
-                if (Directory.Exists(destDirName)) Directory.Delete(destDirName, true);
-            }
-            catch { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine("Couldn't delete " + destDirName); Console.ForegroundColor = ConsoleColor.White; }
-
-            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
-
-            if (!dir.Exists)
-            {
-                throw new DirectoryNotFoundException(
-                    "Source directory does not exist or could not be found: "
-                    + sourceDirName);
-            }
-
-            DirectoryInfo[] dirs = dir.GetDirectories();
-
-            // If the destination directory doesn't exist, create it.       
-            Directory.CreateDirectory(destDirName);
-
-            // Get the files in the directory and copy them to the new location.
-            FileInfo[] files = dir.GetFiles();
-            foreach (FileInfo file in files)
-            {
-                try
-                {
-                    Console.WriteLine("Copying " + file.Name);
-                    Logger.Log("Copying " + file.Name);
-                    string tempPath = System.IO.Path.Combine(destDirName, file.Name);
-                    file.CopyTo(tempPath, true);
-                }
-                catch (Exception e) { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine("ERROR copying " + file.Name); Console.ForegroundColor = ConsoleColor.White; Logger.Log("ERROR copying " + file.Name + ": " + e.ToString(), LoggingType.Error); }
-            }
-
-            // If copying subdirectories, copy them and their contents to new location.
-            if (copySubDirs)
-            {
-                foreach (DirectoryInfo subdir in dirs)
-                {
-                    string tempPath = System.IO.Path.Combine(destDirName, subdir.Name);
-                    DirectoryCopy(subdir.FullName, tempPath, copySubDirs);
-                }
-            }
         }
 
         public bool CheckOculusFolder(bool set = false)
@@ -703,16 +656,13 @@ namespace RIFT_Downgrader
             {
                 versions.Add(v.node.ToReleaseChannelReleaseBinary());
             }
-            Logger.Log("Fetching release dates of versions");
-            undefinedEndProgressBar.UpdateProgress("Fetching release dates of versions");
-            client = GraphQLClient.AppRevisions(appId);
-            foreach(AppRevisionsBinary b in JsonSerializer.Deserialize<AppRevisionsSkeleton>(client.Request()).data.node.primary_binaries.nodes)
-            {
-                for(int i = 0; i < versions.Count; i++)
-                {
-                    if (versions[i].id == b.id) versions[i].created_date = b.created_date;
-                }
-            }
+            //Logger.Log("Fetching release dates of versions");
+            //undefinedEndProgressBar.UpdateProgress("Fetching release dates of versions");
+            //client = GraphQLClient.AppRevisions(appId);
+            //foreach(AppRevisionsBinary b in JsonSerializer.Deserialize<AppRevisionsSkeleton>(client.Request()).data.node.primary_binaries.nodes)
+            //{
+                
+            //}
             Logger.Log("Fetching versions from online cache");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
             WebClient webClient = new WebClient();
@@ -725,12 +675,12 @@ namespace RIFT_Downgrader
                 foreach (ReleaseChannelReleaseBinaryNode b in s.data.node.binaries.edges)
                 {
                     bool exists = false;
-                    foreach (ReleaseChannelReleaseBinary e in versions)
+                    for (int i = 0; i < versions.Count; i++)
                     {
-                        if (e.id == b.node.id)
+                        if (versions[i].id == b.node.id)
                         {
+                            versions[i].created_date = b.node.created_date;
                             exists = true;
-                            break;
                         }
                     }
                     if (!exists) versions.Add(b.node);
@@ -762,7 +712,7 @@ namespace RIFT_Downgrader
                 versionBinary.Add(displayName, b);
                 DateTime t = UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
-                Console.WriteLine(t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year + "     " + displayName);
+                Console.WriteLine((b.created_date != 0 ? t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year : "Date not available") + "     " + displayName);
             }
             bool choosen = false;
             string ver = "";
@@ -835,9 +785,9 @@ namespace RIFT_Downgrader
             {
                 Logger.Log("Downloading ovr-platform-util.exe from https://securecdn.oculus.com/binaries/download/?id=3606802009426978&access_token=OC|1196467420370658|");
                 Console.WriteLine("Downloading ovr-platform-util.exe from Oculus");
-                downloader.DownloadFile("https://securecdn.oculus.com/binaries/download/?id=3606802009426978&access_token=OC|1196467420370658|", exe + "ovr-platform-util.exe");
+                DownloadProgressUI downloadProgressUI = new DownloadProgressUI();
+                downloadProgressUI.StartDownload("https://securecdn.oculus.com/binaries/download/?id=3606802009426978&access_token=OC|1196467420370658|", exe + "ovr-platform-util.exe");
                 Logger.Log("Download finished");
-                Console.WriteLine("Downloaded");
             }
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
             string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + config.access_token;
