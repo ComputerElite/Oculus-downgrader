@@ -173,7 +173,7 @@ namespace RIFT_Downgrader
             while (true)
             {
                 Console.WriteLine();
-                Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus");
+                if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (!UpdateAccessToken(true))
                 {
                     Logger.Log("Access token not provided. You cannot do.", LoggingType.Warning);
