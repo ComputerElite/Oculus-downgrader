@@ -273,6 +273,15 @@ namespace Oculus.API
         }
     }
 
+
+    public class IndexEntry
+    {
+        public string id { get; set; } = "";
+        public string name { get; set; } = "";
+        public string img { get; set; } = "";
+        public string headset { get; set; } = "";
+    }
+
     public class ManifestFile
     {
         public string sha256 { get; set; } = "";

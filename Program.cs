@@ -166,7 +166,6 @@ namespace RIFT_Downgrader
         public static string RiftBSAppId = "1304877726278670";
         public static string QuestBSAppId = "2448060205267927";
         public static string RiftPolygonNightmareAppId = "1333056616777885";
-        public static string access_token = "";
         public static Config config = Config.LoadConfig();
         public void Menu()
         {
@@ -174,50 +173,60 @@ namespace RIFT_Downgrader
             while (true)
             {
                 Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.White;
-                Logger.Log("Showing main menu");
-                Console.WriteLine("[1] Downgrade Beat Saber");
-                Console.WriteLine("[2] Downgrade another " + GetHeadsetDisplayName(config.headset) + " app");
-                Console.WriteLine("[3] " + (config.headset == Headset.RIFT ? "Launch" : "Install") + " App");
-                Console.WriteLine("[4] Open app installation directory");
-                Console.WriteLine("[5] Update access_token");
-                Console.WriteLine("[6] Update oculus folder");
-                Console.WriteLine("[7] Validate installed app");
-                Console.WriteLine("[8] Change Headset (currently " + GetHeadsetDisplayName(config.headset) + ")");
-                Console.WriteLine("[9] Exit");
-                string choice = QuestionString("Choice: ");
-                Logger.Log("User choose option " + choice);
-                switch (choice)
+                Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus");
+                if (!UpdateAccessToken(true))
                 {
-                    case "1":
-                        ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
-                        break;
-                    case "2":
-                        StoreSearch();
-                        break;
-                    case "3":
-                        LaunchApp();
-                        break;
-                    case "4":
-                        LaunchApp(true);
-                        break;
-                    case "5":
-                        UpdateAccessToken();
-                        break;
-                    case "6":
-                        CheckOculusFolder(true);
-                        break;
-                    case "7":
-                        ValidateVersionUser();
-                        break;
-                    case "8":
-                        ChangeHeadsetType();
-                        break;
-                    case "9":
-                        Logger.Log("Exiting");
-                        System.Environment.Exit(0);
-                        break;
+                    Logger.Log("Access token not provided. You cannot do.", LoggingType.Warning);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Valid access token is needed to proceed. Please try again.");
+                } else
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Logger.Log("Showing main menu");
+                    Console.WriteLine("[1] Downgrade Beat Saber");
+                    Console.WriteLine("[2] Downgrade another " + GetHeadsetDisplayName(config.headset) + " app");
+                    Console.WriteLine("[3] " + (config.headset == Headset.RIFT ? "Launch" : "Install") + " App");
+                    Console.WriteLine("[4] Open app installation directory");
+                    Console.WriteLine("[5] Update access_token");
+                    Console.WriteLine("[6] Update oculus folder");
+                    Console.WriteLine("[7] Validate installed app");
+                    Console.WriteLine("[8] Change Headset (currently " + GetHeadsetDisplayName(config.headset) + ")");
+                    Console.WriteLine("[9] Exit");
+                    string choice = QuestionString("Choice: ");
+                    Logger.Log("User choose option " + choice);
+                    switch (choice)
+                    {
+                        case "1":
+                            ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
+                            break;
+                        case "2":
+                            StoreSearch();
+                            break;
+                        case "3":
+                            LaunchApp();
+                            break;
+                        case "4":
+                            LaunchApp(true);
+                            break;
+                        case "5":
+                            UpdateAccessToken();
+                            break;
+                        case "6":
+                            CheckOculusFolder(true);
+                            break;
+                        case "7":
+                            ValidateVersionUser();
+                            break;
+                        case "8":
+                            ChangeHeadsetType();
+                            break;
+                        case "9":
+                            Logger.Log("Exiting");
+                            System.Environment.Exit(0);
+                            break;
+                    }
                 }
+                
             }
         }
 
@@ -667,8 +676,8 @@ namespace RIFT_Downgrader
             undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
             WebClient webClient = new WebClient();
             Logger.Log("Requesting apps in cache from https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json");
-            List<string> apps = JsonSerializer.Deserialize<List<string>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
-            if(apps.Contains(appId))
+            List<IndexEntry> apps = JsonSerializer.Deserialize<List<IndexEntry>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
+            if(apps.FirstOrDefault(x => x.id == appId) != null)
             {
                 Logger.Log("Versions for " + appId + " exist online. Requesting them from https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json and adding.");
                 ReleaseChannelReleasesSkeleton s = JsonSerializer.Deserialize<ReleaseChannelReleasesSkeleton>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json"));
@@ -877,7 +886,11 @@ namespace RIFT_Downgrader
         public bool UpdateAccessToken(bool onlyIfNeeded = false)
         {
             Console.ForegroundColor = ConsoleColor.White;
-            if (IsTokenValid(config.access_token) && onlyIfNeeded) return true;
+            if (IsTokenValid(config.access_token) && onlyIfNeeded)
+            {
+                GraphQLClient.oculusStoreToken = config.access_token;
+                return true;
+            }
             Console.WriteLine();
             Logger.Log("Updating access_token");
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
@@ -907,6 +920,7 @@ namespace RIFT_Downgrader
                 Console.WriteLine("Saving token");
                 config.access_token = at;
                 config.Save();
+                GraphQLClient.oculusStoreToken = config.access_token;
                 return true;
             } else
             {
