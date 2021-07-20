@@ -16,6 +16,7 @@ using ComputerUtils.ADB;
 using ComputerUtils.Logging;
 using ComputerUtils.ConsoleUi;
 using ComputerUtils.FileManaging;
+using Microsoft.Win32;
 
 namespace RIFT_Downgrader
 {
@@ -65,7 +66,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.6";
+        public static string version = "1.2.7";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -543,6 +544,7 @@ namespace RIFT_Downgrader
             if(!config.oculusSoftwareFolderSet || set)
             {
                 Logger.Log("Asking user for Oculus folder");
+                if (!config.oculusSoftwareFolderSet) config.oculusSoftwareFolder = (string)Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus").GetValue("Base") + "Software";
                 string f = QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
