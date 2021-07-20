@@ -65,7 +65,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.5";
+        public static string version = "1.2.6";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -512,6 +512,16 @@ namespace RIFT_Downgrader
                     Console.ForegroundColor = ConsoleColor.White;
                     Logger.Log("Continuing with copy to oculus folder");
                     Console.WriteLine("Copying from app directory to oculus");
+                }
+            } else
+            {
+                Logger.Log("Installation not done by rift downgrader has been detected. Asking user if they want to save the installation.");
+                string choice = QuestionString("Do you want to backup your current install? (Y/n): ");
+                if (choice.ToLower() == "y" || choice == "")
+                {
+                    Logger.Log("User wanted to save installed version. Copying");
+                    Console.WriteLine("Copying from Oculus to app directory");
+                    FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\original_install", true);
                 }
             }
             Logger.Log("Copying game");
