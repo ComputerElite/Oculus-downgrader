@@ -17,6 +17,7 @@ using ComputerUtils.Logging;
 using ComputerUtils.ConsoleUi;
 using ComputerUtils.FileManaging;
 using Microsoft.Win32;
+using ComputerUtils.Encryption;
 
 namespace RIFT_Downgrader
 {
@@ -27,6 +28,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
+
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + Updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -66,7 +68,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.2.7";
+        public static string version = "1.3.0";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -168,20 +170,18 @@ namespace RIFT_Downgrader
         public static string QuestBSAppId = "2448060205267927";
         public static string RiftPolygonNightmareAppId = "1333056616777885";
         public static Config config = Config.LoadConfig();
+        public static string password = "";
         public void Menu()
         {
             SetupProgram();
             while (true)
             {
                 Console.WriteLine();
-                if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
-                if (!UpdateAccessToken(true))
+                //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
+                if (UpdateAccessToken(true))
                 {
-                    Logger.Log("Access token not provided. You cannot do.", LoggingType.Warning);
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Valid access token is needed to proceed. Please try again.");
-                } else
-                {
+
+
                     Console.ForegroundColor = ConsoleColor.White;
                     Logger.Log("Showing main menu");
                     Console.WriteLine("[1] Downgrade Beat Saber");
@@ -198,16 +198,20 @@ namespace RIFT_Downgrader
                     switch (choice)
                     {
                         case "1":
-                            ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
+                            if (CheckPassword())
+                                ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
                             break;
                         case "2":
-                            StoreSearch();
+                            if (CheckPassword())
+                                StoreSearch();
                             break;
                         case "3":
-                            LaunchApp();
+                            if (CheckPassword())
+                                LaunchApp();
                             break;
                         case "4":
-                            LaunchApp(true);
+                            if (CheckPassword())
+                                LaunchApp(true);
                             break;
                         case "5":
                             UpdateAccessToken();
@@ -216,7 +220,8 @@ namespace RIFT_Downgrader
                             CheckOculusFolder(true);
                             break;
                         case "7":
-                            ValidateVersionUser();
+                            if (CheckPassword())
+                                ValidateVersionUser();
                             break;
                         case "8":
                             ChangeHeadsetType();
@@ -226,9 +231,39 @@ namespace RIFT_Downgrader
                             System.Environment.Exit(0);
                             break;
                     }
+                } else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Token is needed to continue. Please press any key to exit.");
+                    Console.ReadLine();
+                    Environment.Exit(0);
                 }
-                
             }
+        }
+
+        public bool CheckPassword()
+        {
+            if(password == "")
+            {
+                if(config.access_token == "")
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Token is not set");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    return false;
+                }
+                Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
+                password = QuestionString("password: ");
+                if(!IsTokenValid(PasswordEncryption.Decrypt(config.access_token, password)))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("The password is wrong. Please try again or set a new password");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    password = "";
+                    return false;
+                }
+            }
+            return true;
         }
 
         public void ChangeHeadsetType()
@@ -811,14 +846,14 @@ namespace RIFT_Downgrader
                 Logger.Log("Download finished");
             }
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
-            string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + config.access_token;
+            string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + PasswordEncryption.Decrypt(config.access_token, password);
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
             if (config.headset == Headset.MONTEREY)
             {
                 Logger.Log("Starting download of " + appName + " via ovr-platform-util: " + "ovr-platform-util.exe download-mobile-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t [token (will not share)]");
                 Console.WriteLine("Starting download of " + appName + " via ovr-platform-util");
-                Process mp = Process.Start(exe + "ovr-platform-util.exe", "download-mobile-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + config.access_token);
+                Process mp = Process.Start(exe + "ovr-platform-util.exe", "download-mobile-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + PasswordEncryption.Decrypt(config.access_token, password));
                 mp.WaitForExit();
                 Logger.Log("Download finished");
             } else
@@ -844,7 +879,7 @@ namespace RIFT_Downgrader
                 Console.WriteLine();
                 Logger.Log("Starting download of " + appName + " via ovr-platform-util: " + "ovr-platform-util.exe download-rift-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t [token (will not share)]");
                 Console.WriteLine("Starting download of " + appName + " via ovr-platform-util");
-                Process p = Process.Start(exe + "ovr-platform-util.exe", "download-rift-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + config.access_token);
+                Process p = Process.Start(exe + "ovr-platform-util.exe", "download-rift-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + PasswordEncryption.Decrypt(config.access_token, password));
                 p.WaitForExit();
                 Logger.Log("Download finished");
 
@@ -898,13 +933,17 @@ namespace RIFT_Downgrader
         public bool UpdateAccessToken(bool onlyIfNeeded = false)
         {
             Console.ForegroundColor = ConsoleColor.White;
-            if (IsTokenValid(config.access_token) && onlyIfNeeded)
-            {
-                GraphQLClient.oculusStoreToken = config.access_token;
-                return true;
-            }
             Console.WriteLine();
             Logger.Log("Updating access_token");
+
+            if (!config.setTokenWithPasswort)
+            {
+                Logger.Log("User needs to enter token again. Reason: token has been saved before encrypted storage has been added. Resetting and saving Token.");
+                config.access_token = "";
+                config.Save();
+                Console.WriteLine("You need to enter your access_token again so it can be securely stored");
+            }
+            else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want a guide");
             string choice = QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
@@ -928,11 +967,25 @@ namespace RIFT_Downgrader
             at = at.Replace(" ", "");
             if (IsTokenValid(at))
             {
-                Logger.Log("Token valid. saving");
-                Console.WriteLine("Saving token");
-                config.access_token = at;
+                bool good = false;
+                Logger.Log("Token valid. asking for password.");
+                Console.WriteLine("You now need to provide a password to encrypt yout token for storing. If you forget this password at any point you just have to provide your Token again.");
+                while(!good)
+                {
+                    password = QuestionString("Password: ");
+                    if (password.Length < 8)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Please have at least 8 characters for your password.");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else good = true;
+                }
+                
+                config.access_token = PasswordEncryption.Encrypt(at, password);
+                config.setTokenWithPasswort = true;
                 config.Save();
-                GraphQLClient.oculusStoreToken = config.access_token;
+                GraphQLClient.oculusStoreToken = PasswordEncryption.Decrypt(config.access_token, password);
                 return true;
             } else
             {
