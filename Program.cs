@@ -68,7 +68,7 @@ namespace RIFT_Downgrader
 
     public class Updater
     {
-        public static string version = "1.3.0";
+        public static string version = "1.3.1";
         public bool CheckUpdate()
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -652,7 +652,7 @@ namespace RIFT_Downgrader
             */
             foreach (StoreSearchResultCategory c in s.data.viewer.contextual_search.all_category_results)
             {
-                if (c.name == "APPS")
+                if (c.name == "APPS" || c.name == "CONCEPT")
                 {
                     foreach (StoreSearchSearchResult r in c.search_results.nodes)
                     {
