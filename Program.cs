@@ -18,6 +18,7 @@ using ComputerUtils.ConsoleUi;
 using ComputerUtils.FileManaging;
 using Microsoft.Win32;
 using ComputerUtils.Encryption;
+using ComputerUtils.Updating;
 
 namespace RIFT_Downgrader
 {
@@ -28,11 +29,11 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-
+            DowngradeManager.updater = new Updater("1.3.1", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader");
             Logger.LogRaw("\n\n");
-            Logger.Log("Starting rift downgrader version " + Updater.version);
+            Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
-            if(args.Length == 1 && args[0] == "--update")
+            if (args.Length == 1 && args[0] == "--update")
             {
                 Logger.Log("Starting in update mode");
                 Updater u = new Updater();
@@ -65,104 +66,6 @@ namespace RIFT_Downgrader
             Environment.Exit(0);
         }
     }
-
-    public class Updater
-    {
-        public static string version = "1.3.1";
-        public bool CheckUpdate()
-        {
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("Checking for updates");
-            UpdateEntry latest = GetLatestVersion();
-            if (latest.comparedToCurrentVersion == 1) {
-                Logger.Log("Update available");
-                Console.WriteLine("New update availabel! Current version: " + version + ", latest version: " + latest.Version);
-                return true;
-            }
-            else if(latest.comparedToCurrentVersion == -2)
-            {
-                Logger.Log("Error while checking for updates", LoggingType.Error);
-                Console.WriteLine("An Error occured while checking for updates");
-            }
-            else if (latest.comparedToCurrentVersion == -1)
-            {
-                Logger.Log("User on preview version");
-                Console.WriteLine("Have fun on a preview version (" + version + "). You can downgrade to the latest stable release (" + latest.Version + ") by pressing enter.");
-                return true;
-            }
-            else
-            {
-                Logger.Log("User on newest version");
-                Console.WriteLine("You are on the newest version");
-            }
-            return false;
-        }
-
-        public UpdateEntry GetLatestVersion()
-        {
-            try
-            {
-                Logger.Log("Fetching newest version");
-                WebClient c = new WebClient();
-                c.Headers.Add("user-agent", "RiftDowngrader/" + version);
-                String json = c.DownloadString("https://raw.githubusercontent.com/ComputerElite/Rift-downgrader/main/update.json");
-                UpdateFile updates = JsonSerializer.Deserialize<UpdateFile>(json);
-                UpdateEntry latest = updates.Updates[0];
-                latest.comparedToCurrentVersion = latest.GetVersion().CompareTo(new System.Version(version));
-                return latest;
-            } catch
-            {
-                Logger.Log("Fetching of newest version failed", LoggingType.Error);
-                return new UpdateEntry();
-            }
-            
-        }
-
-        public void Update()
-        {
-            Console.WriteLine("Rift downgrader started in update mode. Fetching newest version");
-            UpdateEntry e = GetLatestVersion();
-            Console.WriteLine("Updating to version " + e.Version + ". Starting download (this may take a few seconds)");
-            WebClient c = new WebClient();
-            Logger.Log("Downloading update");
-            c.DownloadFile(e.Download, DowngradeManager.exe + "update.zip");
-            Logger.Log("Unpacking");
-            Console.WriteLine("Unpacking update");
-            string destDir = new DirectoryInfo(Path.GetDirectoryName(DowngradeManager.exe)).Parent.FullName + "\\";
-            using (ZipArchive archive = ZipFile.OpenRead(DowngradeManager.exe + "update.zip"))
-            {
-                foreach (ZipArchiveEntry entry in archive.Entries)
-                {
-                    String name = entry.FullName;
-                    if (name.EndsWith("/")) continue;
-                    if (name.Contains("/")) Directory.CreateDirectory(destDir + System.IO.Path.GetDirectoryName(name));
-                    entry.ExtractToFile(destDir + entry.FullName, true);
-                }
-            }
-            File.Delete(DowngradeManager.exe + "update.zip");
-            Logger.Log("Update successful");
-            Console.WriteLine("Updated to version " + e.Version + ". Changelog:\n" + e.Changelog + "\n\nStart Rift downgrader by pressing any key");
-            Console.ReadKey();
-            Process.Start(destDir + "RIFT Downgrader.exe");
-        }
-
-        public void StartUpdate()
-        {
-            Logger.Log("Duplicating exe for update");
-            Console.WriteLine("Duplicating required files");
-            if (Directory.Exists(DowngradeManager.exe + "updater")) Directory.Delete(DowngradeManager.exe + "updater", true);
-            Directory.CreateDirectory(DowngradeManager.exe + "updater");
-            foreach(string f in Directory.GetFiles(DowngradeManager.exe))
-            {
-                File.Copy(f, DowngradeManager.exe + "updater\\" + Path.GetFileName(f), true);
-            }
-            Logger.Log("Starting update. Closing program");
-            Console.WriteLine("Starting update.");
-            Process.Start(DowngradeManager.exe + "updater\\" + Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().Location), "--update");
-            Environment.Exit(0);
-        }
-    }
-
     public class DowngradeManager
     {
         public static string exe = AppDomain.CurrentDomain.BaseDirectory;
@@ -171,6 +74,7 @@ namespace RIFT_Downgrader
         public static string RiftPolygonNightmareAppId = "1333056616777885";
         public static Config config = Config.LoadConfig();
         public static string password = "";
+        public static Updater updater = new Updater();
         public void Menu()
         {
             SetupProgram();
@@ -193,7 +97,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[7] Validate installed app");
                     Console.WriteLine("[8] Change Headset (currently " + GetHeadsetDisplayName(config.headset) + ")");
                     Console.WriteLine("[9] Exit");
-                    string choice = QuestionString("Choice: ");
+                    string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
                     {
@@ -253,7 +157,7 @@ namespace RIFT_Downgrader
                     return false;
                 }
                 Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
-                password = QuestionString("password: ");
+                password = ConsoleUiController.QuestionString("password: ");
                 if(!IsTokenValid(PasswordEncryption.Decrypt(config.access_token, password)))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -271,7 +175,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Logger.Log("Asking which headset the user wants");
-            string choice = QuestionString("Which headset do you want to select? (Quest or Rift): ");
+            string choice = ConsoleUiController.QuestionString("Which headset do you want to select? (Quest or Rift): ");
             switch(choice.ToLower())
             {
                 case "quest":
@@ -403,7 +307,7 @@ namespace RIFT_Downgrader
             string sel = "";
             while (!choosen)
             {
-                sel = QuestionString("Which app do you want to " + (config.headset == Headset.RIFT ? "launch" : "install") + ": ");
+                sel = ConsoleUiController.QuestionString("Which app do you want to " + (config.headset == Headset.RIFT ? "launch" : "install") + ": ");
                 if (nameApp.ContainsKey(sel.ToLower()))
                 {
                     choosen = true;
@@ -444,7 +348,7 @@ namespace RIFT_Downgrader
             while (!choosen)
             {
                 Console.WriteLine();
-                ver = QuestionString("Which version do you want?: ");
+                ver = ConsoleUiController.QuestionString("Which version do you want?: ");
                 if (!versionBinary.ContainsKey(ver))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -536,7 +440,7 @@ namespace RIFT_Downgrader
                 {
                     String installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
                     Logger.Log("Downgraded game already installed. Asking user wether to save the existing install.");
-                    string choice = QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
+                    string choice = ConsoleUiController.QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
                     if (choice.ToLower() == "y" || choice == "")
                     {
                         Logger.Log("User wanted to save installed version. Copying");
@@ -552,7 +456,7 @@ namespace RIFT_Downgrader
             } else
             {
                 Logger.Log("Installation not done by rift downgrader has been detected. Asking user if they want to save the installation.");
-                string choice = QuestionString("Do you want to backup your current install? (Y/n): ");
+                string choice = ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
                 if (choice.ToLower() == "y" || choice == "")
                 {
                     Logger.Log("User wanted to save installed version. Copying");
@@ -580,7 +484,7 @@ namespace RIFT_Downgrader
             {
                 Logger.Log("Asking user for Oculus folder");
                 if (!config.oculusSoftwareFolderSet) config.oculusSoftwareFolder = (string)Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus").GetValue("Base") + "Software";
-                string f = QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
+                string f = ConsoleUiController.QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
                 if (config.oculusSoftwareFolder.EndsWith("\\")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 1);
@@ -622,7 +526,7 @@ namespace RIFT_Downgrader
         {
             Console.WriteLine();
             Logger.Log("Stating store search. Asking for search term");
-            string term = QuestionString("Search term: ");
+            string term = ConsoleUiController.QuestionString("Search term: ");
             Logger.Log("User entered " + term);
             GraphQLClient cl = GraphQLClient.StoreSearch(term, config.headset);
             Console.ForegroundColor = ConsoleColor.White;
@@ -680,7 +584,7 @@ namespace RIFT_Downgrader
             }
             while(!choosen)
             {
-                sel = QuestionString("App name: ");
+                sel = ConsoleUiController.QuestionString("App name: ");
                 if(nameId.ContainsKey(sel.ToLower()))
                 {
                     choosen = true;
@@ -712,13 +616,6 @@ namespace RIFT_Downgrader
             {
                 versions.Add(v.node.ToReleaseChannelReleaseBinary());
             }
-            //Logger.Log("Fetching release dates of versions");
-            //undefinedEndProgressBar.UpdateProgress("Fetching release dates of versions");
-            //client = GraphQLClient.AppRevisions(appId);
-            //foreach(AppRevisionsBinary b in JsonSerializer.Deserialize<AppRevisionsSkeleton>(client.Request()).data.node.primary_binaries.nodes)
-            //{
-                
-            //}
             Logger.Log("Fetching versions from online cache");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
             WebClient webClient = new WebClient();
@@ -774,7 +671,7 @@ namespace RIFT_Downgrader
             string ver = "";
             while(!choosen)
             {
-                ver = QuestionString("Which version do you want?: ");
+                ver = ConsoleUiController.QuestionString("Which version do you want?: ");
                 if (!versionBinary.ContainsKey(ver))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -791,16 +688,16 @@ namespace RIFT_Downgrader
             Console.WriteLine(selected.ToString());
             Console.WriteLine();
             Logger.Log("Asking if user wants to download " + selected.ToString());
-            string choice = QuestionString("Do you want to download this version? (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
             if (choice.ToLower() == "y" || choice == "")
             {
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (y/N): ");
+                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (y/N): ");
                     if (choice.ToLower() != "y") return;
                     Console.WriteLine("Answer was yes. Deleting existing versions");
-                    RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
+                    FileManager.RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
                 }
                 Console.WriteLine("Starting download");
                 StartDownload(selected, appId, appName);
@@ -810,20 +707,6 @@ namespace RIFT_Downgrader
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("Downgrading aborted");
             }
-        }
-
-        public string ByteSizeToString(long input, int decimals = 2)
-        {
-            // TB
-            if (input > 1099511627776) return (input / 1099511627776).ToString("D" + decimals) + " TB";
-            // GB
-            else if (input > 1073741824) return (input / 1073741824).ToString("D" + decimals) + " GB";
-            // MB
-            else if (input > 1048576) return (input / 1048576).ToString("D" + decimals) + " MB";
-            // KB
-            else if (input > 1024) return (input / 1024).ToString("D" + decimals) + " KB";
-            // Bytes
-            else return input + " Bytes";
         }
 
         public void StartDownload(ReleaseChannelReleaseBinary binary, string appId, string appName)
@@ -946,7 +829,7 @@ namespace RIFT_Downgrader
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want a guide");
-            string choice = QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             if (choice.ToLower() == "y" || choice == "")
             {
@@ -957,7 +840,7 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Logger.Log("Asking for access_token");
             Console.WriteLine("Please enter your access_token (it'll be saved locally and is used to authenticate downloads)");
-            string at = QuestionString("access_token: ");
+            string at = ConsoleUiController.QuestionString("access_token: ");
             Logger.Log("Removing property name if needed");
             String[] parts = at.Split(':');
             if(parts.Length >= 2)
@@ -972,7 +855,7 @@ namespace RIFT_Downgrader
                 Console.WriteLine("You now need to provide a password to encrypt yout token for storing. If you forget this password at any point you just have to provide your Token again.");
                 while(!good)
                 {
-                    password = QuestionString("Password: ");
+                    password = ConsoleUiController.QuestionString("Password: ");
                     if (password.Length < 8)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -1010,39 +893,9 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Console.WriteLine("Setting up Program directory");
             Logger.Log("Creating apps dir");
-            CreateDirectoryIfNotExisting(exe + "apps");
+            FileManager.CreateDirectoryIfNotExisting(exe + "apps");
             Console.WriteLine("Finished");
-            Updater u = new Updater();
-            if(u.CheckUpdate())
-            {
-                Logger.Log("Update available. Asking user if they want to update");
-                string choice = QuestionString("Do you want to update? (Y/n): ");
-                if (choice.ToLower() == "y" || choice == "")
-                {
-                    u.StartUpdate();
-                }
-                Logger.Log("Not updating.");
-            }
-        }
-
-        public string QuestionString(string question)
-        {
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.Write(question);
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.ForegroundColor = ConsoleColor.White;
-            return Console.ReadLine();
-        }
-
-        public void CreateDirectoryIfNotExisting(string path)
-        {
-            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
-        }
-
-        public void RecreateDirectoryIfExisting(string path)
-        {
-            if (Directory.Exists(path)) Directory.Delete(path, true);
-            Directory.CreateDirectory(path);
+            updater.UpdateAssistant();
         }
     }
 
