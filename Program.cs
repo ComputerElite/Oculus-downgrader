@@ -30,7 +30,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.3.2", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.3.3", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -561,7 +561,7 @@ namespace RIFT_Downgrader
                 {
                     foreach (StoreSearchSearchResult r in c.search_results.nodes)
                     {
-                        Console.WriteLine(r.target_object.display_name);
+                        Logger.Log("   - " + r.target_object.display_name);
                         Console.WriteLine("   - " + r.target_object.display_name);
                         if (r.target_object.display_name.ToLower() == term.ToLower())
                         {
@@ -573,6 +573,23 @@ namespace RIFT_Downgrader
                         nameId.Add(r.target_object.display_name.ToLower(), r.target_object.id);
                     }
                 }
+            }
+            WebClient client = new WebClient();
+            client.Headers.Add("user-agent", updater.AppName + "/" + updater.version);
+            List<IndexEntry> apps = JsonSerializer.Deserialize<List<IndexEntry>>(client.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
+            foreach(IndexEntry e in apps)
+            {
+                if (!e.name.ToLower().Contains(term.ToLower())) continue;
+                Logger.Log("   - " + e.name);
+                Console.WriteLine("   - " + e.name);
+                if (e.name.ToLower() == term.ToLower())
+                {
+                    Logger.Log("Result is exact match. Auto selecting");
+                    Console.WriteLine("Result is exact match. Auto selecting");
+                    ShowVersions(e.id);
+                    return;
+                }
+                nameId.Add(e.name.ToLower(), e.id);
             }
             Console.WriteLine();
             bool choosen = false;
