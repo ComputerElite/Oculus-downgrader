@@ -580,6 +580,7 @@ namespace RIFT_Downgrader
             foreach(IndexEntry e in apps)
             {
                 if (!e.name.ToLower().Contains(term.ToLower())) continue;
+                if (Enum.GetName(typeof(Headset), config.headset) != e.headset) continue;
                 Logger.Log("   - " + e.name);
                 Console.WriteLine("   - " + e.name);
                 if (e.name.ToLower() == term.ToLower())
