@@ -1,0 +1,20 @@
+{
+    "packageName": "TestPackageDelete",
+    "packageVersion": "1.0.0",
+    "packageAuthor": "ComputerElite",
+    "actions": [
+        {
+            "on": [
+                {
+                    "versions": [
+                        "1.0"
+                    ],
+                    "appId": "1333056616777885"
+                }
+            ],
+            "actionType": "FILEDELETE",
+            "actionName": "Test DELETE",
+            "file": "test_destination.txt"
+        }
+    ]
+}

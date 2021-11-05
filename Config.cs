@@ -25,12 +25,31 @@ namespace RIFT_Downgrader
         {
             File.WriteAllText(DowngradeManager.exe + "config.json", JsonSerializer.Serialize(this));
         }
+
+        public void AddCanonicalNames()
+        {
+            for(int i = 0; i < apps.Count; i++)
+            {
+                if(apps[i].canonicalName == "")
+                {
+                    foreach(App a in apps)
+                    {
+                        if(File.Exists(DowngradeManager.exe + "apps\\" + apps[i].id + "\\" + apps[i].versions[0].id + "\\manifest.json"))
+                        {
+                            apps[i].canonicalName = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.exe + "apps\\" + apps[i].id + "\\" + apps[i].versions[0].id + "\\manifest.json")).canonicalName;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public class App
     {
         public string name { get; set; } = "N/A";
         public string id { get; set; } = "";
+        public string canonicalName { get; set; } = "";
         public Headset headset { get; set; } = Headset.RIFT;
         public List<ReleaseChannelReleaseBinary> versions { get; set; } = new List<ReleaseChannelReleaseBinary>();
         public App() { }

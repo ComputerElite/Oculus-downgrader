@@ -1,0 +1,21 @@
+{
+    "packageName": "TestPackageCopy",
+    "packageVersion": "1.0.0",
+    "packageAuthor": "ComputerElite",
+    "actions": [
+        {
+            "on": [
+                {
+                    "versions": [
+                        "1.0"
+                    ],
+                    "appId": "1333056616777885"
+                }
+            ],
+            "actionType": "FILECOPY",
+            "actionName": "Test Copy",
+            "fileInZip": "test.txt",
+            "fileDestination": "test_destination.txt"
+        }
+    ]
+}

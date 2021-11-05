@@ -30,7 +30,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.3.3", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.4.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -97,7 +97,8 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[6] Update oculus folder");
                     Console.WriteLine("[7] Validate installed app");
                     Console.WriteLine("[8] Change Headset (currently " + GetHeadsetDisplayName(config.headset) + ")");
-                    Console.WriteLine("[9] Exit");
+                    Console.WriteLine("[9] Install Package");
+                    Console.WriteLine("[10] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -132,6 +133,9 @@ namespace RIFT_Downgrader
                             ChangeHeadsetType();
                             break;
                         case "9":
+                            InstallPackage();
+                            break;
+                        case "10":
                             Logger.Log("Exiting");
                             System.Environment.Exit(0);
                             break;
@@ -144,6 +148,29 @@ namespace RIFT_Downgrader
                     Environment.Exit(0);
                 }
             }
+        }
+
+        public void InstallPackage()
+        {
+            config.AddCanonicalNames();
+            string package = ConsoleUiController.QuestionString("Drag and drop package and press enter (Packages are not verified. They could contain malware): ").Replace("\"", "");
+            Package p = Package.LoadPackage(package);
+            if(p == null)
+            {
+                Logger.Log("Package doesn't contain manifest.json Aborting");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Package doesn't contain manifest.json Aborting");
+                return;
+            }
+            Logger.Log("Loaded package " + JsonSerializer.Serialize(p));
+            string install = ConsoleUiController.QuestionString("Do you want to install " + p.metadata.packageName + " version " + p.metadata.packageVersion + " by " + p.metadata.packageAuthor + " (y/N): ");
+            if(install != "y")
+            {
+                Logger.Log("User aborted package installation");
+                Console.WriteLine("Aborted");
+                return;
+            }
+            p.Execute();
         }
 
         public bool CheckPassword()
