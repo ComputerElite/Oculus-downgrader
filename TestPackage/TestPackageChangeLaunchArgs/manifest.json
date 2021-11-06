@@ -1,0 +1,20 @@
+{
+    "packageName": "TestPackageNewLaunchArgs",
+    "packageVersion": "1.0.0",
+    "packageAuthor": "ComputerElite",
+    "actions": [
+        {
+            "on": [
+                {
+                    "versions": [
+                        "1.0"
+                    ],
+                    "appId": "1333056616777885"
+                }
+            ],
+            "actionType": "CHANGELAUNCHARGS",
+            "actionName": "Test Change launch args",
+            "newLaunchArgs": "YouFuckingIdiot"
+        }
+    ]
+}

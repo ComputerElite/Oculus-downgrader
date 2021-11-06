@@ -42,6 +42,7 @@ namespace RIFT_Downgrader
                     }
                 }
             }
+            Save();
         }
     }
 

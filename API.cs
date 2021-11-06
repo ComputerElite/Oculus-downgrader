@@ -78,6 +78,7 @@ namespace Oculus.API
         public string version { get; set; } = "";
         public int version_code { get; set; } = 0;
         public long created_date { get; set; } = 0;
+        public string extraLaunchArgs { get; set; } = "";
 
         public override string ToString()
         {

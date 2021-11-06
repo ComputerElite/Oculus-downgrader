@@ -30,7 +30,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.4.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.4.1", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -429,7 +429,7 @@ namespace RIFT_Downgrader
                 ADBInteractor interactor = new ADBInteractor();
                 Console.WriteLine("Installing apk to Quest if connected (this can take a minute):");
                 Logger.Log("Installing apk");
-                if(!interactor.adb("install -d \"" + apk + "\""))
+                if(!interactor.ForceInstallAPK(apk))
                 {
                     Logger.Log("Install failed", LoggingType.Warning);
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -448,7 +448,7 @@ namespace RIFT_Downgrader
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Aborting since oculus software folder isn't set.");
-                Logger.Log("Aborting since oculus software folder isn't set", LoggingType.Warning);
+                Logger.Log("Aborting since oculus software folder isn't set. Please set it in the main menu", LoggingType.Warning);
                 return;
             }
             Console.ForegroundColor = ConsoleColor.White;
@@ -462,11 +462,11 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("Version is already copied. Launching");
                     Console.WriteLine("Version is already in the library folder. Launching");
-                    Process.Start(appDir + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+                    Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
                     return;
                 } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
                 {
-                    String installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
+                    string installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
                     Logger.Log("Downgraded game already installed. Asking user wether to save the existing install.");
                     string choice = ConsoleUiController.QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
                     if (choice.ToLower() == "y" || choice == "")
@@ -493,7 +493,7 @@ namespace RIFT_Downgrader
                 }
             }
             Logger.Log("Copying game");
-            FileManager.DirectoryCopy(baseDirectory, config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, true);
+            FileManager.DirectoryCopy(baseDirectory, appDir, true);
             Logger.Log("Copying manifest");
             File.Copy(baseDirectory + "manifest.json", config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json", true);
             Logger.Log("Adding minimal manifest");
@@ -503,7 +503,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
-            Process.Start(appDir + manifest.launchFile, manifest.launchParameters != null ? manifest.launchParameters : "");
+            Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
         }
 
         public bool CheckOculusFolder(bool set = false)
