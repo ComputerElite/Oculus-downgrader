@@ -57,7 +57,7 @@ namespace RIFT_Downgrader
                 App app = null;
                 if ((app = DowngradeManager.config.apps.FirstOrDefault(x => (x.canonicalName == o.canonicalName || x.id == o.appId) && x.headset == Headset.RIFT)) != null)
                 {
-                    Oculus.API.ReleaseChannelReleaseBinary binary = null;
+                    ReleaseChannelReleaseBinary binary = null;
                     if((binary = app.versions.FirstOrDefault(x => o.versions.Contains(x.version) || o.versionCodes.Contains(x.version_code))) != null) // Check against database
                     {
                         Manifest m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.config.oculusSoftwareFolder + "\\Manifests\\" + app.canonicalName + ".json"));
@@ -220,6 +220,7 @@ namespace RIFT_Downgrader
 
         public static Package LoadPackage(string path)
         {
+            Logger.Log("Loading package " + path);
             ZipArchive archive = ZipFile.OpenRead(path);
             Package p = new Package();
             p.path = path;
