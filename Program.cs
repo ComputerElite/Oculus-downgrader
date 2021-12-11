@@ -783,12 +783,17 @@ namespace RIFT_Downgrader
             WebClient downloader = new WebClient();
             if (!File.Exists(exe + "ovr-platform-util.exe"))
             {
-                Logger.Log("Downloading ovr-platform-util.exe from https://securecdn.oculus.com/binaries/download/?id=3606802009426978&access_token=OC|1196467420370658|");
+                Logger.Log("Downloading ovr-platform-util.exe from https://www.oculus.com/download_app/?id=1076686279105243&access_token=OC|1076686279105243|");
                 Console.WriteLine("Downloading ovr-platform-util.exe from Oculus");
                 DownloadProgressUI downloadProgressUI = new DownloadProgressUI();
-                downloadProgressUI.StartDownload("https://securecdn.oculus.com/binaries/download/?id=3606802009426978&access_token=OC|1196467420370658|", exe + "ovr-platform-util.exe");
+                downloadProgressUI.StartDownload("https://www.oculus.com/download_app/?id=1076686279105243&access_token=OC|1076686279105243|", exe + "ovr-platform-util.exe");
                 Logger.Log("Download finished");
             }
+            Logger.Log("Starting ovr-platform-util self update");
+            Console.WriteLine("Starting ovr-platform-util self update if needed");
+            Process up = Process.Start(exe + "ovr-platform-util.exe", "self-update");
+            up.WaitForExit();
+            Logger.Log("Update finished or not needed");
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
             string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + PasswordEncryption.Decrypt(config.access_token, password);
             Logger.Log("Creating " + baseDirectory);
