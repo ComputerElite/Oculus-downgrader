@@ -37,8 +37,7 @@ namespace RIFT_Downgrader
             if (args.Length == 1 && args[0] == "--update")
             {
                 Logger.Log("Starting in update mode");
-                Updater u = new Updater();
-                u.Update();
+                DowngradeManager.updater.Update();
                 return;
             }
             DowngradeManager m = new DowngradeManager();
