@@ -153,7 +153,7 @@ namespace RIFT_Downgrader
                                 Logger.Log("Downloading from " + downloadUri + " to " + dir + fileDestination);
                                 Console.WriteLine("Downloading from " + downloadUri + " to " + fileDestination);
                                 DownloadProgressUI d = new DownloadProgressUI();
-                                d.StartDownload(downloadUri, dir + fileDestination, true, new Dictionary<string, string> { { "User-Agent", "Rift-Downgrader/" + DowngradeManager.updater.version } });
+                                d.StartDownload(downloadUri, dir + fileDestination, true, true, new Dictionary<string, string> { { "User-Agent", "Rift-Downgrader/" + DowngradeManager.updater.version } });
                                 break;
                             case ActionType.CHANGELAUNCHARGS:
                                 Logger.Log("Changing launch args to " + newLaunchArgs);

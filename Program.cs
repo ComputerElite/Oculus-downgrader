@@ -20,6 +20,9 @@ using Microsoft.Win32;
 using ComputerUtils.Encryption;
 using ComputerUtils.Updating;
 using System.Reflection;
+using OpenQA.Selenium.Edge;
+using OpenQA.Selenium.Support.UI;
+using System.Web;
 
 namespace RIFT_Downgrader
 {
@@ -30,7 +33,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.4.4", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.4.5", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -78,8 +81,10 @@ namespace RIFT_Downgrader
         public void Menu()
         {
             SetupProgram();
+            //LoginWithFacebook("secret");
             while (true)
             {
+                
                 Console.WriteLine();
                 //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (UpdateAccessToken(true))
@@ -149,6 +154,66 @@ namespace RIFT_Downgrader
             }
         }
 
+        // This almost works. I can get a token but can't sign in to oculus with it.
+        public void LoginWithFacebook(string appId)
+        {
+            Logger.Log("Starting login via Facebook");
+            if(!File.Exists(exe + "msedgedriver.exe"))
+            {
+                Console.WriteLine("Downloading Microsoft edge driver");
+                DownloadProgressUI d = new DownloadProgressUI();
+                d.StartDownload("https://msedgedriver.azureedge.net/96.0.1054.53/edgedriver_win32.zip", "msedgedriver.zip");
+                Logger.Log("Extracting zip");
+                Console.WriteLine("Extracting package");
+                ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
+                foreach(ZipArchiveEntry e in a.Entries)
+                {
+                    if(e.Name.EndsWith(".exe"))
+                    {
+                        e.ExtractToFile("msedgedriver.exe");
+                        break;
+                    }
+                }
+                a.Dispose();
+                if(!File.Exists("msedgedriver.exe"))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Failed to extract Microsoft edge driver. You can't log in with Facebook");
+                    Logger.Log("Extract failed");
+                    return;
+                }
+            }
+            Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
+            Console.WriteLine();
+            string loginUrl = "https://www.facebook.com/v12.0/dialog/oauth?client_id=" + appId + "&redirect_uri=https://www.facebook.com/connect/login_success.html&state=Login&response_type=token&scope=email,public_profile,user_birthday,user_friends";
+            Logger.Log("Navigating Edge driver to " + loginUrl);
+            EdgeDriver driver = new EdgeDriver(exe);
+            driver.Url = loginUrl;
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
+            wait.Until(d => d.Url.StartsWith("https://www.facebook.com/connect/login_success.html"));
+            string url = driver.Url.Replace("#", "?");
+            driver.Quit();
+            if(!url.StartsWith("https://www.facebook.com/connect/login_success.html"))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("The login window has been closed due to exceeding 5 minutes. If you wish to try again simpyl select the login option again");
+                return;
+            }
+            string fbToken = HttpUtility.ParseQueryString(new Uri(url).Query.Substring(1)).Get("access_token");
+            if(fbToken == null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("There was an error logging you in.");
+                return;
+            }
+            Logger.Log("Facebook token recieved. Requesting Oculus token");
+            Console.WriteLine("Logged into Facebook. I'll now request a token for Oculus");
+
+            Console.WriteLine(fbToken);
+            Console.WriteLine();
+            Console.WriteLine(url);
+        }
+
         public void InstallPackage()
         {
             config.AddCanonicalNames();
@@ -185,7 +250,7 @@ namespace RIFT_Downgrader
                 }
                 Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
                 password = ConsoleUiController.QuestionString("password: ");
-                if(!IsTokenValid(PasswordEncryption.Decrypt(config.access_token, password)))
+                if(!IsTokenValid(DecryptToken()))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("The password is wrong. Please try again or set a new password");
@@ -769,6 +834,19 @@ namespace RIFT_Downgrader
             }
         }
 
+        public string DecryptToken()
+        {
+            return config.access_token.Substring(0, 5) + PasswordEncryption.Decrypt(config.access_token.Substring(5), password);
+        }
+
+        private static byte[] Decompress(Stream input)
+        {
+            Ionic.Zlib.DeflateStream s = new Ionic.Zlib.DeflateStream(input, Ionic.Zlib.CompressionMode.Decompress);
+            MemoryStream m = new MemoryStream();
+            s.CopyTo(m);
+            return m.ToArray();
+        }
+
         public void StartDownload(ReleaseChannelReleaseBinary binary, string appId, string appName)
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -780,6 +858,7 @@ namespace RIFT_Downgrader
                 return;
             }
             WebClient downloader = new WebClient();
+            /*
             if (!File.Exists(exe + "ovr-platform-util.exe"))
             {
                 Logger.Log("Downloading ovr-platform-util.exe from https://www.oculus.com/download_app/?id=1076686279105243&access_token=OC|1076686279105243|");
@@ -793,43 +872,70 @@ namespace RIFT_Downgrader
             Process up = Process.Start(exe + "ovr-platform-util.exe", "self-update");
             up.WaitForExit();
             Logger.Log("Update finished or not needed");
+            */
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
-            string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + PasswordEncryption.Decrypt(config.access_token, password);
+            string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + DecryptToken();
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
             if (config.headset == Headset.MONTEREY)
             {
-                Logger.Log("Starting download of " + appName + " via ovr-platform-util: " + "ovr-platform-util.exe download-mobile-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t [token (will not share)]");
-                Console.WriteLine("Starting download of " + appName + " via ovr-platform-util");
-                Process mp = Process.Start(exe + "ovr-platform-util.exe", "download-mobile-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + PasswordEncryption.Decrypt(config.access_token, password));
-                mp.WaitForExit();
+                Logger.Log("Starting download of " + appName);
+                Console.WriteLine("Starting download of " + appName);
+                DownloadProgressUI ui = new DownloadProgressUI();
+                Logger.notAllowedStrings.Add(DecryptToken());
+                ui.StartDownload(baseDownloadLink, baseDirectory + "app.apk", true, true, new Dictionary<string, string> { { "User-Agent", updater.AppName + "/" + updater.version} });
                 Logger.Log("Download finished");
             } else
             {
-                baseDownloadLink += "&get_";
                 Console.WriteLine();
                 Console.WriteLine("Downloading manifest");
                 try
                 {
                     Logger.Log("Downloading manifest");
-                    downloader.DownloadFile(baseDownloadLink + "manifest=1", baseDirectory + "manifest.zip");
+                    downloader.DownloadFile(baseDownloadLink + "&get_manifest=1", baseDirectory + "manifest.zip");
                     Logger.Log("Download finished");
                 }
-                catch
+                catch (Exception e)
                 {
                     Logger.Log("Download of manifest failed. Aborting.", LoggingType.Warning);
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine();
-                    Console.WriteLine("Download of manifest failed. Do you own this game? If you do then please update your access token in case it's expired");
+                    Console.WriteLine("Download of manifest failed. Do you own this game? If you do then please update your access token in case it's expired: " + e.ToString());
                     return;
                 }
                 ZipFile.ExtractToDirectory(baseDirectory + "manifest.zip", baseDirectory);
                 Console.WriteLine();
-                Logger.Log("Starting download of " + appName + " via ovr-platform-util: " + "ovr-platform-util.exe download-rift-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t [token (will not share)]");
-                Console.WriteLine("Starting download of " + appName + " via ovr-platform-util");
-                Process p = Process.Start(exe + "ovr-platform-util.exe", "download-rift-build -b " + binary.id + " -d \"" + baseDirectory.Substring(0, baseDirectory.Length - 1) + "\" -t " + PasswordEncryption.Decrypt(config.access_token, password));
-                p.WaitForExit();
+                
                 Logger.Log("Download finished");
+
+
+
+                Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
+                ProgressBarUI totalProgress = new ProgressBarUI();
+                totalProgress.Start();
+                DownloadProgressUI segmentDownloader = new DownloadProgressUI();
+                FileManager.RecreateDirectoryIfExisting("tmp");
+                int done = 0;
+                Logger.notAllowedStrings.Add(DecryptToken());
+                foreach (KeyValuePair<string, ManifestFile> f in manifest.files)
+                {
+                    totalProgress.UpdateProgress(done, manifest.files.Count, done.ToString(), manifest.files.Count.ToString());
+                    List<byte> final = new List<byte>();
+                    foreach(object[] segment in f.Value.segments)
+                    {
+                        string url = "https://securecdn.oculus.com/binaries/segment/?access_token=" + DecryptToken() + "&binary_id=" + binary.id + "&segment_sha256=" + segment[1];
+                        segmentDownloader.StartDownload(url, "tmp\\file", true, true, new Dictionary<string, string> { { "User-Agent", updater.AppName + "/" + updater.version } });
+                        Stream s = File.OpenRead("tmp\\file");
+                        s.ReadByte();
+                        s.ReadByte();
+                        final.AddRange(Decompress(s));
+                        s.Close();
+                        File.Delete("tmp\\file");
+                    }
+                    FileManager.CreateDirectoryIfNotExisting(FileManager.GetParentDirIfExisting(baseDirectory + f.Key.Replace("/", "\\")));
+                    File.WriteAllBytes(baseDirectory + f.Key.Replace("/", "\\"), final.ToArray());
+                    done++;
+                }
 
                 ValidateVersion(new AppReturnVersion(new App(appName, appId), binary));
             }
@@ -884,7 +990,7 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Logger.Log("Updating access_token");
 
-            if (!config.setTokenWithPasswort)
+            if (config.tokenRevision != 2)
             {
                 Logger.Log("User needs to enter token again. Reason: token has been saved before encrypted storage has been added. Resetting and saving Token.");
                 config.access_token = "";
@@ -929,11 +1035,10 @@ namespace RIFT_Downgrader
                     }
                     else good = true;
                 }
-                
-                config.access_token = PasswordEncryption.Encrypt(at, password);
-                config.setTokenWithPasswort = true;
+                config.access_token = at.Substring(0, 5) + PasswordEncryption.Encrypt(at.Substring(5), password);
+                config.tokenRevision = 2;
                 config.Save();
-                GraphQLClient.oculusStoreToken = PasswordEncryption.Decrypt(config.access_token, password);
+                GraphQLClient.oculusStoreToken = DecryptToken();
                 return true;
             } else
             {

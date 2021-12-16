@@ -288,6 +288,6 @@ namespace Oculus.API
         public string sha256 { get; set; } = "";
         public long size { get; set; } = 0;
         public long segmentSize { get; set; } = 10000000;
-        public object[] segments { get; set; } = new object[0];
+        public object[][] segments { get; set; } = new object[0][];
     }
 }
