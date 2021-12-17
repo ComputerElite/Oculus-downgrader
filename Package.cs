@@ -1,5 +1,4 @@
-﻿using ComputerUtils.GraphQL;
-using ComputerUtils.Logging;
+﻿using ComputerUtils.Logging;
 using Oculus.API;
 using System;
 using System.Collections.Generic;
@@ -8,6 +7,8 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using ComputerUtils.ConsoleUi;
+using OculusGraphQLApiLib.Game;
+using OculusGraphQLApiLib;
 
 namespace RIFT_Downgrader
 {

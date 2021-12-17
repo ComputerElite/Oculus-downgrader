@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Oculus.API;
-using ComputerUtils.GraphQL;
 using System.IO;
 using System.Diagnostics;
 using System.Text.Json;
@@ -23,6 +22,9 @@ using System.Reflection;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using System.Web;
+using OculusGraphQLApiLib.Game;
+using OculusGraphQLApiLib;
+using OculusGraphQLApiLib.Results;
 
 namespace RIFT_Downgrader
 {
@@ -33,7 +35,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.5.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.5.1", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -317,61 +319,8 @@ namespace RIFT_Downgrader
 
         public void ValidateVersion(AppReturnVersion selected)
         {
-            Console.ForegroundColor = ConsoleColor.White;
-            if (selected.app.headset == Headset.MONTEREY)
-            {
-                Logger.Log("Cannot validate files of Quest app.", LoggingType.Warning);
-                Console.WriteLine("Cannot validate files of Quest app.");
-                return;
-            }
-            Logger.Log("Validating files of " + selected.app.name + " version " + selected.version.version);
-            Console.WriteLine("Validating files of " + selected.app.name + " version " + selected.version.version);
-            Logger.Log("Loading manifest");
-            Console.WriteLine("Loading manifest");
             string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
-            Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
-            SHA256 shaCalculator = SHA256.Create();
-            int i = 0;
-            int valid = 0;
-            foreach (KeyValuePair<string, ManifestFile> f in manifest.files)
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Logger.Log("Validating " + f.Key);
-                Console.WriteLine("Validating " + f.Key);
-                if (!File.Exists(baseDirectory + f.Key))
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Logger.Log("File does not exist", LoggingType.Warning);
-                    Console.WriteLine("File does not exist");
-                    continue;
-                }
-                if (BitConverter.ToString(shaCalculator.ComputeHash(File.ReadAllBytes(baseDirectory + f.Key))).Replace("-", "").ToLower() != f.Value.sha256.ToLower())
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Logger.Log("Hash does not match", LoggingType.Warning);
-                    Console.WriteLine("Hash of " + f.Key + " doesn't match with the one in the manifest!");
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Logger.Log("Hash checks out");
-                    Console.WriteLine("Hash checks out.");
-                    valid++;
-                }
-                i++;
-            }
-            if (i != valid)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Logger.Log(valid + " out of " + i + " files are valid");
-                Console.WriteLine("Only " + valid + " out of " + i + " files are valid! Have you modded any file? You can reinstall the version by simply downloading it again via the tool.");
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Logger.Log("Game OK");
-                Console.WriteLine("Every included file with the game is the one it's intended to be. All files ok");
-            }
+            Validator.ValidateGameInstall(baseDirectory, baseDirectory + "manifest.json");
         }
 
         public AppReturnVersion SelectFromInstalledApps()
@@ -471,8 +420,8 @@ namespace RIFT_Downgrader
             }
             if (selected.app.headset == Headset.MONTEREY)
             {
-                Logger.Log("Finding downloaded apk in " + baseDirectory);
-                Console.WriteLine("Finding downloaded APK");
+                Logger.Log("Searching downloaded apk in " + baseDirectory);
+                Console.WriteLine("Searching downloaded APK");
                 string apk = "";
                 foreach(string file in Directory.GetFiles(baseDirectory))
                 {
@@ -522,9 +471,9 @@ namespace RIFT_Downgrader
             if (File.Exists(appDir + "manifest.json"))
             {
                 Manifest existingManifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(appDir + "manifest.json"));
-                if(existingManifest.versionCode == manifest.versionCode)
+                if(existingManifest.versionCode == manifest.versionCode && File.Exists(appDir + manifest.launchFile))
                 {
-                    Logger.Log("Version is already copied. Launching");
+                    Logger.Log("Version is already copied. Launching: " + appDir + manifest.launchFile);
                     Console.WriteLine("Version is already in the library folder. Launching");
                     Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
                     return;
@@ -547,7 +496,7 @@ namespace RIFT_Downgrader
                 }
             } else
             {
-                Logger.Log("Installation not done by rift downgrader has been detected. Asking user if they want to save the installation.");
+                Logger.Log("Installation not done by Rift Downgrader has been detected. Asking user if they want to save the installation.");
                 string choice = ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
                 if (choice.ToLower() == "y" || choice == "")
                 {
@@ -620,40 +569,23 @@ namespace RIFT_Downgrader
             Logger.Log("Stating store search. Asking for search term");
             string term = ConsoleUiController.QuestionString("Search term: ");
             Logger.Log("User entered " + term);
-            GraphQLClient cl = GraphQLClient.StoreSearch(term, config.headset);
             Console.ForegroundColor = ConsoleColor.White;
             Logger.Log("Requesting results");
             Console.WriteLine("Requesting results");
-            StoreSearchResultSkeleton s = JsonSerializer.Deserialize<StoreSearchResultSkeleton>(cl.Request());
+            ViewerData<ContextualSearch> s = GraphQLClient.StoreSearch(term, config.headset);
             Console.WriteLine();
             Logger.Log("Results: ");
             Console.WriteLine("Results: ");
             Console.WriteLine();
             Dictionary<string, string> nameId = new Dictionary<string, string>();
-            /*
-            foreach(StoreSearchSearchResult c in s.data.application_search.results.edges)
-            {
-                Console.WriteLine(c.node.display_name);
-                Logger.Log("   - " + c.node.display_name);
-                Console.WriteLine(c.node.id);
-                if (c.node.display_name.ToLower() == term.ToLower())
-                {
-                    Logger.Log("Result is exact match. Auto selecting");
-                    Console.WriteLine("Result is exact match. Auto selecting");
-                    ShowVersions(c.node.id);
-                    return;
-                }
-                nameId.Add(c.node.display_name.ToLower(), c.node.id);
-            }
-            */
-            foreach (StoreSearchResultCategory c in s.data.viewer.contextual_search.all_category_results)
+            foreach (CategorySearchResult c in s.data.viewer.contextual_search.all_category_results)
             {
                 if (c.name == "APPS" || c.name == "CONCEPT")
                 {
-                    foreach (StoreSearchSearchResult r in c.search_results.nodes)
+                    foreach (TargetObject<EdgesPrimaryBinaryApplication> r in c.search_results.nodes)
                     {
                         int increment = 0;
-                        while (nameId.ContainsKey(r.target_object.display_name.ToLower() + (increment == 0 ? "" : " " + increment)))
+                        while (nameId.ContainsKey(r.target_object.display_name + (increment == 0 ? "" : " " + increment)))
                         {
                             increment++;
                         }
@@ -731,15 +663,14 @@ namespace RIFT_Downgrader
             UndefinedEndProgressBar undefinedEndProgressBar = new UndefinedEndProgressBar();
             undefinedEndProgressBar.Start();
             Logger.Log("Fetching versions");
-            List<ReleaseChannelReleaseBinary> versions = new List<ReleaseChannelReleaseBinary>();
+            List<AndroidBinary> versions = new List<AndroidBinary>();
             undefinedEndProgressBar.SetupSpinningWheel(500);
             undefinedEndProgressBar.UpdateProgress("Fetching Versions");
-            GraphQLClient client = GraphQLClient.VersionHistory(appId);
-            VersionHistorySkeleton versionS = JsonSerializer.Deserialize<VersionHistorySkeleton>(client.Request());
-            string appName = versionS.data.node.displayName;
-            foreach (VersionHistoryVersion v in versionS.data.node.supportedBinaries.edges)
+            Data<Application> versionS = GraphQLClient.VersionHistory(appId);
+            string appName = versionS.data.node.display_name;
+            foreach (Node<AndroidBinary> v in versionS.data.node.supportedBinaries.edges)
             {
-                versions.Add(v.node.ToReleaseChannelReleaseBinary());
+                versions.Add(v.node);
             }
             Logger.Log("Fetching versions from online cache");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
@@ -749,8 +680,8 @@ namespace RIFT_Downgrader
             if(apps.FirstOrDefault(x => x.id == appId) != null)
             {
                 Logger.Log("Versions for " + appId + " exist online. Requesting them from https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json and adding.");
-                ReleaseChannelReleasesSkeleton s = JsonSerializer.Deserialize<ReleaseChannelReleasesSkeleton>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json"));
-                foreach (ReleaseChannelReleaseBinaryNode b in s.data.node.binaries.edges)
+                Data<ComputersCacheApplication> s = JsonSerializer.Deserialize<Data<ComputersCacheApplication>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json"));
+                foreach (Node<AndroidBinary> b in s.data.node.binaries.edges)
                 {
                     bool exists = false;
                     for (int i = 0; i < versions.Count; i++)
@@ -773,12 +704,12 @@ namespace RIFT_Downgrader
             Logger.Log("Versions of " + appName);
             Console.WriteLine("Versions of " + appName);
             Console.WriteLine();
-            versions = versions.OrderBy(b => b.created_date).ToList<ReleaseChannelReleaseBinary>();
-            Dictionary<string, ReleaseChannelReleaseBinary> versionBinary = new Dictionary<string, ReleaseChannelReleaseBinary>();
-            foreach(ReleaseChannelReleaseBinary b in versions)
+            versions = versions.OrderBy(b => b.created_date).ToList<AndroidBinary>();
+            Dictionary<string, AndroidBinary> versionBinary = new Dictionary<string, AndroidBinary>();
+            foreach(AndroidBinary b in versions)
             {
                 bool exists = false;
-                foreach (ReleaseChannelReleaseBinary e in versions)
+                foreach (AndroidBinary e in versions)
                 {
                     if(e.version == b.version && e.version_code != b.version_code)
                     {
@@ -807,7 +738,7 @@ namespace RIFT_Downgrader
                 }
             }
             Logger.Log("Selection of user is " + ver);
-            ReleaseChannelReleaseBinary selected = versionBinary[ver];
+            AndroidBinary selected = versionBinary[ver];
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Console.WriteLine(selected.ToString());
@@ -847,7 +778,7 @@ namespace RIFT_Downgrader
             return m.ToArray();
         }
 
-        public void StartDownload(ReleaseChannelReleaseBinary binary, string appId, string appName)
+        public void StartDownload(AndroidBinary binary, string appId, string appName)
         {
             Console.ForegroundColor = ConsoleColor.White;
             if (!UpdateAccessToken(true))
@@ -857,88 +788,11 @@ namespace RIFT_Downgrader
                 Console.WriteLine("Valid access token is needed to proceed. Aborting.");
                 return;
             }
-            WebClient downloader = new WebClient();
-            /*
-            if (!File.Exists(exe + "ovr-platform-util.exe"))
-            {
-                Logger.Log("Downloading ovr-platform-util.exe from https://www.oculus.com/download_app/?id=1076686279105243&access_token=OC|1076686279105243|");
-                Console.WriteLine("Downloading ovr-platform-util.exe from Oculus");
-                DownloadProgressUI downloadProgressUI = new DownloadProgressUI();
-                downloadProgressUI.StartDownload("https://www.oculus.com/download_app/?id=1076686279105243&access_token=OC|1076686279105243|", exe + "ovr-platform-util.exe");
-                Logger.Log("Download finished");
-            }
-            Logger.Log("Starting ovr-platform-util self update");
-            Console.WriteLine("Starting ovr-platform-util self update if needed");
-            Process up = Process.Start(exe + "ovr-platform-util.exe", "self-update");
-            up.WaitForExit();
-            Logger.Log("Update finished or not needed");
-            */
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
-            string baseDownloadLink = "https://securecdn.oculus.com/binaries/download/?id=" + binary.id + "&access_token=" + DecryptToken();
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
-            if (config.headset == Headset.MONTEREY)
-            {
-                Logger.Log("Starting download of " + appName);
-                Console.WriteLine("Starting download of " + appName);
-                DownloadProgressUI ui = new DownloadProgressUI();
-                Logger.notAllowedStrings.Add(DecryptToken());
-                ui.StartDownload(baseDownloadLink, baseDirectory + "app.apk", true, true, new Dictionary<string, string> { { "User-Agent", updater.AppName + "/" + updater.version} });
-                Logger.Log("Download finished");
-            } else
-            {
-                Console.WriteLine();
-                Console.WriteLine("Downloading manifest");
-                try
-                {
-                    Logger.Log("Downloading manifest");
-                    downloader.DownloadFile(baseDownloadLink + "&get_manifest=1", baseDirectory + "manifest.zip");
-                    Logger.Log("Download finished");
-                }
-                catch (Exception e)
-                {
-                    Logger.Log("Download of manifest failed. Aborting.", LoggingType.Warning);
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine();
-                    Console.WriteLine("Download of manifest failed. Do you own this game? If you do then please update your access token in case it's expired: " + e.ToString());
-                    return;
-                }
-                ZipFile.ExtractToDirectory(baseDirectory + "manifest.zip", baseDirectory);
-                Console.WriteLine();
-                
-                Logger.Log("Download finished");
-
-
-
-                Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
-                ProgressBarUI totalProgress = new ProgressBarUI();
-                totalProgress.Start();
-                DownloadProgressUI segmentDownloader = new DownloadProgressUI();
-                FileManager.RecreateDirectoryIfExisting("tmp");
-                int done = 0;
-                Logger.notAllowedStrings.Add(DecryptToken());
-                foreach (KeyValuePair<string, ManifestFile> f in manifest.files)
-                {
-                    totalProgress.UpdateProgress(done, manifest.files.Count, done.ToString(), manifest.files.Count.ToString());
-                    List<byte> final = new List<byte>();
-                    foreach(object[] segment in f.Value.segments)
-                    {
-                        string url = "https://securecdn.oculus.com/binaries/segment/?access_token=" + DecryptToken() + "&binary_id=" + binary.id + "&segment_sha256=" + segment[1];
-                        segmentDownloader.StartDownload(url, "tmp\\file", true, true, new Dictionary<string, string> { { "User-Agent", updater.AppName + "/" + updater.version } });
-                        Stream s = File.OpenRead("tmp\\file");
-                        s.ReadByte();
-                        s.ReadByte();
-                        final.AddRange(Decompress(s));
-                        s.Close();
-                        File.Delete("tmp\\file");
-                    }
-                    FileManager.CreateDirectoryIfNotExisting(FileManager.GetParentDirIfExisting(baseDirectory + f.Key.Replace("/", "\\")));
-                    File.WriteAllBytes(baseDirectory + f.Key.Replace("/", "\\"), final.ToArray());
-                    done++;
-                }
-
-                ValidateVersion(new AppReturnVersion(new App(appName, appId), binary));
-            }
+            if (config.headset == Headset.MONTEREY) GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+            else GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
 
             Console.ForegroundColor = ConsoleColor.White;
             Logger.Log("Adding version to config");
@@ -958,7 +812,7 @@ namespace RIFT_Downgrader
                             break;
                         }
                     }
-                    if(!exists) config.apps[a].versions.Add(binary);
+                    if(!exists) config.apps[a].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
                 }
             }
             if(!found)
@@ -967,7 +821,7 @@ namespace RIFT_Downgrader
                 a.name = appName;
                 a.id = appId;
                 a.headset = config.headset;
-                a.versions.Add(binary);
+                a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
                 config.apps.Add(a);
             }
             config.Save();
