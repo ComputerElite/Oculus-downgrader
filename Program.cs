@@ -25,6 +25,7 @@ using System.Web;
 using OculusGraphQLApiLib.Game;
 using OculusGraphQLApiLib;
 using OculusGraphQLApiLib.Results;
+using ComputerUtils.VarUtils;
 
 namespace RIFT_Downgrader
 {
@@ -251,7 +252,7 @@ namespace RIFT_Downgrader
                     return false;
                 }
                 Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
-                password = ConsoleUiController.QuestionString("password: ");
+                password = ConsoleUiController.SecureQuestionString("password (input hidden): ");
                 if(!IsPasswordValid(password))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -310,6 +311,7 @@ namespace RIFT_Downgrader
             if (selected.app.headset == Headset.MONTEREY)
             {
                 Logger.Log("Cannot validate files of Quest app.", LoggingType.Warning);
+                Console.ForegroundColor= ConsoleColor.DarkYellow;
                 Console.WriteLine("Cannot validate files of Quest app.");
                 return;
             }
@@ -380,7 +382,7 @@ namespace RIFT_Downgrader
                 }
                 string displayName = b.version + (exists ? " " + b.version_code : "");
                 versionBinary.Add(displayName, b);
-                DateTime t = UnixTimeStampToDateTime(b.created_date);
+                DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
                 Console.WriteLine(t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year + "     " + displayName);
             }
@@ -487,9 +489,9 @@ namespace RIFT_Downgrader
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
                         FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\" + installedId, true);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("Finished\n");
                     }
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("Finished\n");
                     Console.ForegroundColor = ConsoleColor.White;
                     Logger.Log("Continuing with copy to oculus folder");
                     Console.WriteLine("Copying from app directory to oculus");
@@ -719,7 +721,7 @@ namespace RIFT_Downgrader
                 }
                 string displayName = b.version + (exists ? " " + b.version_code : "");
                 versionBinary.Add(displayName, b);
-                DateTime t = UnixTimeStampToDateTime(b.created_date);
+                DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
                 Console.WriteLine((b.created_date != 0 ? t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year : "Date not available") + "     " + displayName);
             }
@@ -750,8 +752,8 @@ namespace RIFT_Downgrader
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (y/N): ");
-                    if (choice.ToLower() != "y") return;
+                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (Y/n): ");
+                    if (choice.ToLower() == "n") return;
                     Console.WriteLine("Answer was yes. Deleting existing versions");
                     FileManager.RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
                 }
@@ -827,15 +829,7 @@ namespace RIFT_Downgrader
             config.Save();
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
-            Console.WriteLine("Finished");
-        }
-
-        public static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
-        {
-            // Unix timestamp is seconds past epoch
-            System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-            dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
-            return dtDateTime;
+            Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu.");
         }
 
         public bool UpdateAccessToken(bool onlyIfNeeded = false)
@@ -880,7 +874,7 @@ namespace RIFT_Downgrader
                 Console.WriteLine("You now need to provide a password to encrypt yout token for storing. If you forget this password at any point you just have to provide your Token again.");
                 while(!good)
                 {
-                    password = ConsoleUiController.QuestionString("Password: ");
+                    password = ConsoleUiController.SecureQuestionString("Password (input hidden): ");
                     if (password.Length < 8)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -930,10 +924,5 @@ namespace RIFT_Downgrader
             Console.WriteLine("Finished");
             updater.UpdateAssistant();
         }
-    }
-
-    public class GitHubTag
-    {
-        public string name { get; set; } = "";
     }
 }
