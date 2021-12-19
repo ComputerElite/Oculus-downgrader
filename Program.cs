@@ -35,7 +35,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.5.2", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.5.3", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -252,7 +252,7 @@ namespace RIFT_Downgrader
                 }
                 Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
                 password = ConsoleUiController.QuestionString("password: ");
-                if(!IsTokenValid(DecryptToken()))
+                if(!IsPasswordValid(password))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("The password is wrong. Please try again or set a new password");
@@ -844,9 +844,9 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Logger.Log("Updating access_token");
 
-            if (config.tokenRevision != 2)
+            if (config.tokenRevision != 3)
             {
-                Logger.Log("User needs to enter token again. Reason: token has been saved before encrypted storage has been added. Resetting and saving Token.");
+                Logger.Log("User needs to enter token again. Reason: token has been saved before password SHA256 has been added. Resetting and saving Token.");
                 config.access_token = "";
                 config.Save();
                 Console.WriteLine("You need to enter your access_token again so it can be securely stored");
@@ -889,8 +889,9 @@ namespace RIFT_Downgrader
                     }
                     else good = true;
                 }
+                config.passwordSHA256 = Hasher.GetSHA256OfString(password);
                 config.access_token = at.Substring(0, 5) + PasswordEncryption.Encrypt(at.Substring(5), password);
-                config.tokenRevision = 2;
+                config.tokenRevision = 3;
                 config.Save();
                 GraphQLClient.oculusStoreToken = DecryptToken();
                 return true;
@@ -898,7 +899,7 @@ namespace RIFT_Downgrader
             {
                 Logger.Log("Token not valid", LoggingType.Warning);
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Token is not valid. Please try getting you access_token with another request described in the guide.");
+                Console.WriteLine("Token is not valid. Please try getting you access_token with another request as described in the guide.");
                 return false;
             }
         }
@@ -908,6 +909,14 @@ namespace RIFT_Downgrader
             //yes this is basic
             Logger.Log("Checking if token matches requirements");
             if (token.StartsWith("OC") && !token.Contains("|")) return true;
+            return false;
+        }
+
+        public bool IsPasswordValid(string password)
+        {
+            //yes this is basic
+            Logger.Log("Checking if password SHA matches saved one");
+            if (Hasher.GetSHA256OfString(password) == config.passwordSHA256) return true;
             return false;
         }
 

@@ -10,6 +10,7 @@ namespace RIFT_Downgrader
     public class Config
     {
         public string access_token { get; set; } = "";
+        public string passwordSHA256 { get; set; } = "";
         public string oculusSoftwareFolder { get; set; } = "C:\\Program Files\\Oculus\\Software";
         public bool oculusSoftwareFolderSet { get; set; } = false;
         public int tokenRevision { get; set; } = 1;
