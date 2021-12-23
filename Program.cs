@@ -527,7 +527,7 @@ namespace RIFT_Downgrader
             {
                 Logger.Log("Asking user for Oculus folder");
                 if (!config.oculusSoftwareFolderSet) config.oculusSoftwareFolder = (string)Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus").GetValue("Base") + "Software";
-                string f = ConsoleUiController.QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet.") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
+                string f = ConsoleUiController.QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet. ") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
                 if (config.oculusSoftwareFolder.EndsWith("\\")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 1);
@@ -772,14 +772,6 @@ namespace RIFT_Downgrader
             return config.access_token.Substring(0, 5) + PasswordEncryption.Decrypt(config.access_token.Substring(5), password);
         }
 
-        private static byte[] Decompress(Stream input)
-        {
-            Ionic.Zlib.DeflateStream s = new Ionic.Zlib.DeflateStream(input, Ionic.Zlib.CompressionMode.Decompress);
-            MemoryStream m = new MemoryStream();
-            s.CopyTo(m);
-            return m.ToArray();
-        }
-
         public void StartDownload(AndroidBinary binary, string appId, string appName)
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -793,9 +785,16 @@ namespace RIFT_Downgrader
             string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
-            if (config.headset == Headset.MONTEREY) GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
-            else GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
-
+            bool success = false;
+            if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+            else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
+            if(!success)
+            {
+                Console.ForegroundColor= ConsoleColor.Red;
+                Logger.Log("Download failed", LoggingType.Warning);
+                Console.WriteLine("Download failed");
+                return;
+            }
             Console.ForegroundColor = ConsoleColor.White;
             Logger.Log("Adding version to config");
             Console.WriteLine("Saving version info");
@@ -859,7 +858,7 @@ namespace RIFT_Downgrader
             Console.WriteLine();
             Logger.Log("Asking for access_token");
             Console.WriteLine("Please enter your access_token (it'll be saved locally and is used to authenticate downloads)");
-            string at = ConsoleUiController.QuestionString("access_token: ");
+            string at = ConsoleUiController.SecureQuestionString("access_token (hidden): ");
             Logger.Log("Removing property name if needed");
             String[] parts = at.Split(':');
             if(parts.Length >= 2)
@@ -867,7 +866,7 @@ namespace RIFT_Downgrader
                 at = parts[2];
             }
             at = at.Replace(" ", "");
-            if (IsTokenValid(at))
+            if (TokenTools.IsUserTokenValid(at))
             {
                 bool good = false;
                 Logger.Log("Token valid. asking for password.");
@@ -888,6 +887,13 @@ namespace RIFT_Downgrader
                 config.tokenRevision = 3;
                 config.Save();
                 GraphQLClient.oculusStoreToken = DecryptToken();
+                Logger.Log("Getting username");
+                UndefinedEndProgressBar usernamegetter = new UndefinedEndProgressBar();
+                usernamegetter.UpdateProgress("Getting username");
+                usernamegetter.StopSpinningWheel();
+                ViewerData<OculusUserWrapper> currentUser = GraphQLClient.GetCurrentUser();
+                Logger.Log("Logged in as " + currentUser.data.viewer.user.alias);
+                Console.WriteLine("You are currently logged in as " + currentUser.data.viewer.user.alias);
                 return true;
             } else
             {
@@ -896,14 +902,6 @@ namespace RIFT_Downgrader
                 Console.WriteLine("Token is not valid. Please try getting you access_token with another request as described in the guide.");
                 return false;
             }
-        }
-
-        public bool IsTokenValid(string token)
-        {
-            //yes this is basic
-            Logger.Log("Checking if token matches requirements");
-            if (token.StartsWith("OC") && !token.Contains("|")) return true;
-            return false;
         }
 
         public bool IsPasswordValid(string password)
