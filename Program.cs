@@ -828,7 +828,7 @@ namespace RIFT_Downgrader
             config.Save();
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
-            Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu.");
+            Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
         }
 
         public bool UpdateAccessToken(bool onlyIfNeeded = false)
