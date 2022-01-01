@@ -37,7 +37,6 @@ namespace RIFT_Downgrader
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
             DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
-            DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
