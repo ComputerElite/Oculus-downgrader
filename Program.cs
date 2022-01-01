@@ -36,7 +36,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.5.5", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -410,7 +410,12 @@ namespace RIFT_Downgrader
 
         public void LaunchApp(bool openDir = false)
         {
-            AppReturnVersion selected = SelectFromInstalledApps();
+            LaunchApp(SelectFromInstalledApps(), openDir);
+        }
+
+        public void LaunchApp(AppReturnVersion selected, bool openDir = false)
+        {
+            
             Console.ForegroundColor = ConsoleColor.White;
             string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
             if (openDir)
@@ -799,13 +804,13 @@ namespace RIFT_Downgrader
             Logger.Log("Adding version to config");
             Console.WriteLine("Saving version info");
             bool found = false;
-            for(int a = 0; a < config.apps.Count; a++)
+            for(int aa = 0; aa < config.apps.Count; aa++)
             {
-                if(config.apps[a].id == appId)
+                if(config.apps[aa].id == appId)
                 {
                     found = true;
                     bool exists = false;
-                    foreach(ReleaseChannelReleaseBinary b in config.apps[a].versions)
+                    foreach(ReleaseChannelReleaseBinary b in config.apps[aa].versions)
                     {
                         if(b.id == binary.id)
                         {
@@ -813,23 +818,34 @@ namespace RIFT_Downgrader
                             break;
                         }
                     }
-                    if(!exists) config.apps[a].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
+                    if(!exists) config.apps[aa].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
                 }
             }
-            if(!found)
+            App a = new App();
+            a.name = appName;
+            a.id = appId;
+            a.headset = config.headset;
+            a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
+            if (!found)
             {
-                App a = new App();
-                a.name = appName;
-                a.id = appId;
-                a.headset = config.headset;
-                a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
                 config.apps.Add(a);
             }
             config.Save();
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
-            if(config.headset == Headset.RIFT) Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
-            else Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
+            string choice = "";
+            if (config.headset == Headset.RIFT)
+            {
+                Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
+                choice = ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n)");
+            }
+            else
+            {
+                Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
+                choice = ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n)");
+            }
+            if (choice == "n") return;
+            LaunchApp(new AppReturnVersion(a, ReleaseChannelReleaseBinary.FromAndroidBinary(binary)));
         }
 
         public bool UpdateAccessToken(bool onlyIfNeeded = false)
@@ -864,7 +880,7 @@ namespace RIFT_Downgrader
             String[] parts = at.Split(':');
             if(parts.Length >= 2)
             {
-                at = parts[2];
+                at = parts[1];
             }
             at = at.Replace(" ", "");
             if (TokenTools.IsUserTokenValid(at))
