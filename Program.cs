@@ -37,6 +37,7 @@ namespace RIFT_Downgrader
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
             DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -757,7 +758,7 @@ namespace RIFT_Downgrader
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " installed. Do you want to download it again? (Y/n): ");
+                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " downloaded. Do you want to download it again? (Y/n): ");
                     if (choice.ToLower() == "n") return;
                     Console.WriteLine("Answer was yes. Deleting existing versions");
                     FileManager.RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
