@@ -984,7 +984,6 @@ namespace RIFT_Downgrader
             try
             {
                 ViewerData<OculusUserWrapper> currentUser = GraphQLClient.GetCurrentUser();
-                Logger.Log(JsonSerializer.Serialize(currentUser));
                 if (currentUser.data.viewer.user == null) throw new Exception("No, your mom");
                 Logger.Log("Logged in as " + currentUser.data.viewer.user.alias);
                 Console.WriteLine("You are currently logged in as " + currentUser.data.viewer.user.alias);
