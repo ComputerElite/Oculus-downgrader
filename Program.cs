@@ -36,7 +36,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.5.6", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.6.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
@@ -81,6 +81,9 @@ namespace RIFT_Downgrader
         public static Config config = Config.LoadConfig();
         public static string password = "";
         public static Updater updater = new Updater();
+        string qPVersion = "2.2.4";
+        string qPDownloadLink = "https://github.com/ComputerElite/QuestPatcherBuilds/releases/download/2.2.4/QuestPatcher.zip";
+        public bool first = true;
         public void Menu()
         {
             SetupProgram();
@@ -92,8 +95,6 @@ namespace RIFT_Downgrader
                 //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (UpdateAccessToken(true))
                 {
-
-
                     Console.ForegroundColor = ConsoleColor.White;
                     Logger.Log("Showing main menu");
                     Console.WriteLine("[1] Downgrade Beat Saber");
@@ -261,6 +262,12 @@ namespace RIFT_Downgrader
                     password = "";
                     return false;
                 }
+                
+            }
+            if (first)
+            {
+                first = false;
+                if(!ShowUsername()) return false;
             }
             return true;
         }
@@ -440,12 +447,64 @@ namespace RIFT_Downgrader
                         break;
                     }
                 }
-                if(apk == "")
+                if(apk == "" || new FileInfo(apk).Length < 100)
                 {
                     Logger.Log("No APK found. Can't install APK");
-                    Console.WriteLine("No APK found. Can't install APK");
+                    Console.WriteLine("No APK found. Can't install APK. Please try to download it again");
                     return;
                 }
+
+                Logger.Log("Asking if user wants to mod the APK");
+                if(ConsoleUiController.QuestionString("Do you want to mod the apk before installing it (QuestPatcher is being used)? (y/N): ") == "y")
+                {
+                    string qPPath = exe + "QuestPatcher.exe";
+                    if (!File.Exists(qPPath) || config.qPVersion != qPVersion)
+                    {
+                        Logger.Log("QP doesn't exist or is outdated. Downloading required version");
+                        DownloadProgressUI d = new DownloadProgressUI();
+                        d.StartDownload(qPDownloadLink, qPPath + ".zip");
+                        if(!File.Exists(qPPath + ".zip"))
+                        {
+                            Logger.Log("File failed to download. Returning to Menu");
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("QuestPatcher failed to download. App not installed.");
+                            return;
+                        }
+                        Logger.Log("Extracting archive");
+                        foreach(ZipArchiveEntry e in ZipFile.OpenRead(qPPath + ".zip").Entries)
+                        {
+                            if (e.Name.EndsWith(".exe")) e.ExtractToFile(qPPath);
+                        }
+                        config.qPVersion = qPVersion;
+                        config.Save();
+                    }
+                    ProcessStartInfo info = new ProcessStartInfo
+                    {
+                        Arguments = "patch \"" + apk + "\" --handTracking --debuggable -o --resultPath \"" + apk + ".patched.apk\"",
+                        FileName = qPPath,
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                    };
+                    Logger.Log("Starting QuestPatcher with args " + info.Arguments);
+                    Console.WriteLine("Starting patching with QuestPatcher. This may take a minute.");
+                    Process p = Process.Start(info);
+                    while (!p.StandardOutput.EndOfStream)
+                    {
+                        string o = ((char)p.StandardOutput.Read()).ToString();
+                        //Logger.Log(o);
+                        Console.Write(o);
+                    }
+                    p.WaitForExit();
+                    Logger.Log("QP exit code: " + p.ExitCode);
+                    if(File.Exists(apk + ".patched.apk") && p.ExitCode == 0) apk = apk + ".patched.apk";
+                    else
+                    {
+                        Logger.Log("QuestPatcher exited with exit code " + p.ExitCode + " which is not 0 indicating an error. Vanilla version will be installed.");
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.WriteLine("QuestPatcher was unable to patch the APK. I'll be installing the vanilla version.");
+                    }
+                }
+
                 ADBInteractor interactor = new ADBInteractor();
                 Console.WriteLine("Installing apk to Quest if connected (this can take a minute):");
                 Logger.Log("Installing apk");
@@ -904,19 +963,37 @@ namespace RIFT_Downgrader
                 config.tokenRevision = 3;
                 config.Save();
                 GraphQLClient.oculusStoreToken = DecryptToken();
-                Logger.Log("Getting username");
-                UndefinedEndProgressBar usernamegetter = new UndefinedEndProgressBar();
-                usernamegetter.UpdateProgress("Getting username");
-                usernamegetter.StopSpinningWheel();
-                ViewerData<OculusUserWrapper> currentUser = GraphQLClient.GetCurrentUser();
-                Logger.Log("Logged in as " + currentUser.data.viewer.user.alias);
-                Console.WriteLine("You are currently logged in as " + currentUser.data.viewer.user.alias);
+                if(!ShowUsername()) return false;
                 return true;
             } else
             {
                 Logger.Log("Token not valid", LoggingType.Warning);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Token is not valid. Please try getting you access_token with another request as described in the guide.");
+                return false;
+            }
+        }
+
+        public bool ShowUsername()
+        {
+            GraphQLClient.oculusStoreToken = DecryptToken();
+            Logger.Log("Getting username");
+            UndefinedEndProgressBar usernamegetter = new UndefinedEndProgressBar();
+            usernamegetter.UpdateProgress("Getting username");
+            usernamegetter.StopSpinningWheel();
+            try
+            {
+                ViewerData<OculusUserWrapper> currentUser = GraphQLClient.GetCurrentUser();
+                Logger.Log(JsonSerializer.Serialize(currentUser));
+                if (currentUser.data.viewer.user == null) throw new Exception("No, your mom");
+                Logger.Log("Logged in as " + currentUser.data.viewer.user.alias);
+                Console.WriteLine("You are currently logged in as " + currentUser.data.viewer.user.alias);
+                return true;
+            } catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Logger.Log("Error while requesting Username. Token is probably expired.");
+                Console.WriteLine("Error while requesting username. Your token is probably expired. Please update it with option 5 (update access_token) to be able to download games again.");
                 return false;
             }
         }
