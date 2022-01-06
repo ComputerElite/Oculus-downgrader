@@ -26,6 +26,7 @@ using OculusGraphQLApiLib.Game;
 using OculusGraphQLApiLib;
 using OculusGraphQLApiLib.Results;
 using ComputerUtils.VarUtils;
+using ComputerUtils.CommandLine;
 
 namespace RIFT_Downgrader
 {
@@ -39,11 +40,37 @@ namespace RIFT_Downgrader
             DowngradeManager.updater = new Updater("1.6.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
-            Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             if (args.Length == 1 && args[0] == "--update")
             {
                 Logger.Log("Starting in update mode");
                 DowngradeManager.updater.Update();
+                return;
+            }
+
+            DowngradeManager.commands = new CommandLineCommandContainer(args);
+            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--update", "-U" }, true, "Starts in update mode trying to install an update in the parent folder"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--noupdatecheck" }, true, "Starts Rift Downgrader without checking for updates"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "download", "d" }, true, "Starts download of an app/game or at least opens the version page");
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--token" }, false, "Sets the oculus token for Rift Downgrader", "Oculus token"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--savetoken" }, true, "Saves the token provided via --token. Needs --password to encrypt the token"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--password" }, false, "Password to encrypt a token if --savetoken is specified. If no token is specified this password will be used to decrypt the saved token", "password"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--destination" }, false, "Destination to download a game to", "location"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--search", "-s" }, false, "Searches for an app in the oculus store", "query"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--headset", "-h" }, false, "Changes and saves the headset. QUEST and RIFT are supported", "Headset", "RIFT"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--mod", "-m" }, true, "Attempts to mod quest games if you launch them and then installs the modded version"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Rift Downgrader will show an Error if you miss an argument");
+
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appid" }, false, "Appid of game to download/launch", "appid"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appname" }, false, "Name of game to launch", "name"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versioncode" }, false, "VersonCode of the game version to download/launch", "versioncode"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versionid" }, false, "Id of the game version to download/launch", "versionid"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versionstring" }, false, "VersionString of the game version to download/launch. Less precise than other version selecting", "versionstring"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--copyold" }, true, "If you want to backup your current install"); // Done
+
+            if (DowngradeManager.commands.HasArgument("help") || DowngradeManager.commands.HasArgument("?") || DowngradeManager.commands.HasArgument("imconfused"))
+            {
+                DowngradeManager.commands.ShowHelp(DowngradeManager.updater.AppName, "You can't count on me for implementing every argument. Some may be there but some aren't.");
                 return;
             }
             DowngradeManager m = new DowngradeManager();
@@ -64,9 +91,8 @@ namespace RIFT_Downgrader
 
         public static void HandleExtenption(Exception e, string source)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
             Logger.Log("An unhandled exception has occured:\n" + e.ToString(), LoggingType.Crash);
-            Console.WriteLine("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fix. Press any key to close out.");
+            DowngradeManager.Error("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fix. Press any key to close out.");
             Console.ReadKey();
             Logger.Log("Exiting cause of unhandled exception.");
             Environment.Exit(0);
@@ -81,12 +107,130 @@ namespace RIFT_Downgrader
         public static Config config = Config.LoadConfig();
         public static string password = "";
         public static Updater updater = new Updater();
+        public static CommandLineCommandContainer commands = null;
         string qPVersion = "2.2.4";
         string qPDownloadLink = "https://github.com/ComputerElite/QuestPatcherBuilds/releases/download/2.2.4/QuestPatcher.zip";
         public bool first = true;
+        public bool auto = false;
+        public bool cont = false;
+
+        public static void Error(string error)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(error);
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        public static void Good(string error)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(error);
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        public void HandleCLIArgs()
+        {
+            if (commands.HasArgument("--token"))
+            {
+                GraphQLClient.oculusStoreToken = commands.GetValue("--token");
+                Console.WriteLine("Set token to " + GraphQLClient.oculusStoreToken);
+                if(commands.HasArgument("--savetoken") && commands.HasArgument("--password"))
+                {
+                    if(commands.GetValue("--password").Length < 8)
+                    {
+                        Error("The password has to be at least 8 characters long. Not saving");
+                    } else
+                    {
+                        if(!SavePasswordAndToken(GraphQLClient.oculusStoreToken, commands.GetValue("--password")))
+                        {
+                            Error("Issue saving password and token");
+                        } else
+                        {
+                            Good("Saved password and token");
+                        }
+                    }
+                }
+                password = "fuck off I don't need a password you idiot";
+            }
+            cont = commands.HasArgument("--continue");
+            Headset headset = Headset.RIFT;
+            bool hasHeadset = false;
+            if(commands.HasArgument("--headset"))
+            {
+                hasHeadset = true;
+                headset = commands.GetValue("--headset").ToLower() == "quest" ? Headset.MONTEREY : Headset.RIFT;
+                config.headset = headset;
+                config.Save();
+            }
+            if (commands.HasArgument("--password"))
+            {
+                password = commands.GetValue("--password");
+                if (!IsPasswordValid(password))
+                {
+                    Error("Password is invalid. Closing application");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Environment.Exit(1);
+                }
+                DecryptToken();
+            }
+            if (commands.HasArgument("launch"))
+            {
+                if ((commands.HasArgument("--appid") || commands.HasArgument("--appname")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid"))) {
+                    foreach(App a in config.apps)
+                    {
+                        Console.WriteLine(a.name);
+                        Console.WriteLine(commands.GetValue("--appname").ToLower());
+                        if(a.name.ToLower() == commands.GetValue("--appname").ToLower() || a.id == commands.GetValue("--appid"))
+                        {
+                            if (hasHeadset && headset != a.headset) continue;
+                            foreach(ReleaseChannelReleaseBinary b in a.versions)
+                            {
+                                Console.WriteLine(b.ToString());
+                                if(b.id == commands.GetValue("--versionid") || b.version_code.ToString() == commands.GetValue("--versioncode") || b.version == commands.GetValue("--versionstring"))
+                                {
+                                    // Matching version, launch it you idiot
+                                    auto = true;
+                                    LaunchApp(new AppReturnVersion(a, b), false);
+                                    Environment.Exit(0);
+                                }
+                            }
+                        }
+                    }
+                    Error("App not found");
+                }
+                else
+                {
+                    Error("You have to have --appid/--appname and --versionstring/--versioncode/--versionid to launch an app");
+                }
+                Environment.Exit(1);
+            }
+            if(commands.HasArgument("download"))
+            {
+                auto = true;
+                if((commands.HasArgument("--appname") || commands.HasArgument("--appid")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid")) || commands.HasArgument("--search") && commands.HasArgument("--"))
+                {
+                    if(commands.HasArgument("--appid"))
+                    {
+                        ShowVersions(commands.GetValue("--appid"));
+                    }
+                    if(commands.HasArgument("--appname") || commands.HasArgument("--search"))
+                    {
+                        StoreSearch(commands.HasArgument("--appname") ? commands.GetValue("--appname") : commands.GetValue("--search"));
+                    }
+                    Environment.Exit(0);
+                } else
+                {
+                    Error("You need --appname/--appid/--search and --versionid/--versioncode/--versionstring or --search");
+                    Environment.Exit(1);
+                }
+            }
+        }
+
         public void Menu()
         {
+            Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             SetupProgram();
+            HandleCLIArgs();
             //LoginWithFacebook("secret");
             while (true)
             {
@@ -145,13 +289,12 @@ namespace RIFT_Downgrader
                             break;
                         case "10":
                             Logger.Log("Exiting");
-                            System.Environment.Exit(0);
+                            Environment.Exit(0);
                             break;
                     }
                 } else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Token is needed to continue. Please press any key to exit.");
+                    Error("Token is needed to continue. Please press any key to exit.");
                     Console.ReadLine();
                     Environment.Exit(0);
                 }
@@ -181,8 +324,7 @@ namespace RIFT_Downgrader
                 a.Dispose();
                 if(!File.Exists("msedgedriver.exe"))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Failed to extract Microsoft edge driver. You can't log in with Facebook");
+                    Error("Failed to extract Microsoft edge driver. You can't log in with Facebook");
                     Logger.Log("Extract failed");
                     return;
                 }
@@ -199,15 +341,13 @@ namespace RIFT_Downgrader
             driver.Quit();
             if(!url.StartsWith("https://www.facebook.com/connect/login_success.html"))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("The login window has been closed due to exceeding 5 minutes. If you wish to try again simpyl select the login option again");
+                Error("The login window has been closed due to exceeding 5 minutes. If you wish to try again simpyl select the login option again");
                 return;
             }
             string fbToken = HttpUtility.ParseQueryString(new Uri(url).Query.Substring(1)).Get("access_token");
             if(fbToken == null)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("There was an error logging you in.");
+                Error("There was an error logging you in.");
                 return;
             }
             Logger.Log("Facebook token recieved. Requesting Oculus token");
@@ -226,8 +366,7 @@ namespace RIFT_Downgrader
             if(p == null)
             {
                 Logger.Log("Package doesn't contain manifest.json Aborting");
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Package doesn't contain manifest.json Aborting");
+                Error("Package doesn't contain manifest.json Aborting");
                 return;
             }
             Logger.Log("Loaded package " + JsonSerializer.Serialize(p));
@@ -247,18 +386,14 @@ namespace RIFT_Downgrader
             {
                 if(config.access_token == "")
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Token is not set");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    Error("Token is not set");
                     return false;
                 }
                 Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
                 password = ConsoleUiController.SecureQuestionString("password (input hidden): ");
                 if(!IsPasswordValid(password))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("The password is wrong. Please try again or set a new password");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    Error("The password is wrong. Please try again or set a new password");
                     password = "";
                     return false;
                 }
@@ -364,8 +499,7 @@ namespace RIFT_Downgrader
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("That app is not downloaded. Please type the full name displayed above.");
+                    Error("That app is not downloaded. Please type the full name displayed above.");
                 }
             }
             Logger.Log("User selected " + sel);
@@ -401,8 +535,7 @@ namespace RIFT_Downgrader
                 ver = ConsoleUiController.QuestionString("Which version do you want?: ");
                 if (!versionBinary.ContainsKey(ver))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("This version does not exist.");
+                    Error("This version does not exist.");
                 }
                 else
                 {
@@ -455,7 +588,7 @@ namespace RIFT_Downgrader
                 }
 
                 Logger.Log("Asking if user wants to mod the APK");
-                if(ConsoleUiController.QuestionString("Do you want to mod the apk before installing it (QuestPatcher is being used)? (y/N): ") == "y")
+                if(commands.HasArgument("--mod") || !auto && ConsoleUiController.QuestionString("Do you want to mod the apk before installing it (QuestPatcher is being used)? (y/N): ") == "y")
                 {
                     string qPPath = exe + "QuestPatcher.exe";
                     if (!File.Exists(qPPath) || config.qPVersion != qPVersion)
@@ -466,8 +599,7 @@ namespace RIFT_Downgrader
                         if(!File.Exists(qPPath + ".zip"))
                         {
                             Logger.Log("File failed to download. Returning to Menu");
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("QuestPatcher failed to download. App not installed.");
+                            Error("QuestPatcher failed to download. App not installed.");
                             return;
                         }
                         Logger.Log("Extracting archive");
@@ -511,12 +643,10 @@ namespace RIFT_Downgrader
                 if(!interactor.ForceInstallAPK(apk))
                 {
                     Logger.Log("Install failed", LoggingType.Warning);
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Install failed. See above for more info");
+                    Error("Install failed. See above for more info");
                     return;
                 }
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("APK Installed. You should now be able to launch it from your Quest");
+                Good("APK Installed. You should now be able to launch it from your Quest");
                 return;
             }
             Logger.Log("Launching selected version");
@@ -525,8 +655,7 @@ namespace RIFT_Downgrader
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
             if(!CheckOculusFolder())
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Aborting since oculus software folder isn't set.");
+                Error("Aborting since oculus software folder isn't set.");
                 Logger.Log("Aborting since oculus software folder isn't set. Please set it in the main menu", LoggingType.Warning);
                 return;
             }
@@ -547,14 +676,13 @@ namespace RIFT_Downgrader
                 {
                     string installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
                     Logger.Log("Downgraded game already installed. Asking user wether to save the existing install.");
-                    string choice = ConsoleUiController.QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
+                    string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
                     if (choice.ToLower() == "y" || choice == "")
                     {
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
                         FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\" + installedId, true);
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("Finished\n");
+                        Good("Finished\n");
                     }
                     Console.ForegroundColor = ConsoleColor.White;
                     Logger.Log("Continuing with copy to oculus folder");
@@ -563,7 +691,7 @@ namespace RIFT_Downgrader
             } else
             {
                 Logger.Log("Installation not done by Rift Downgrader has been detected. Asking user if they want to save the installation.");
-                string choice = ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
+                string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
                 if (choice.ToLower() == "y" || choice == "")
                 {
                     Logger.Log("User wanted to save installed version. Copying");
@@ -579,8 +707,7 @@ namespace RIFT_Downgrader
             File.WriteAllText(config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json.mini", JsonSerializer.Serialize(manifest.GetMinimal()));
             Logger.Log("Adding version id into RiftDowngrader_appId.txt");
             File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.version.id);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Finished.\nLaunching");
+            Good("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
             Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
         }
@@ -598,24 +725,21 @@ namespace RIFT_Downgrader
                 if (config.oculusSoftwareFolder.EndsWith("\\Software\\Software")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 9);
                 if(!Directory.Exists(config.oculusSoftwareFolder))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("This folder does not exist. Try setting the folder again to a valid folder via the option in the main menu");
+                    Error("This folder does not exist. Try setting the folder again to a valid folder via the option in the main menu");
                     Logger.Log("User wanted to set a non existent folder as oculus software directory: " + config.oculusSoftwareFolder + ". Falling back to " + before, LoggingType.Warning);
                     config.oculusSoftwareFolder = before;
                     return false;
                 }
                 if (!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
+                    Error("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
                     Logger.Log(config.oculusSoftwareFolder + " does not contain Software folder. Falling back to " + before, LoggingType.Warning);
                     config.oculusSoftwareFolder = before;
                     return false;
                 }
                 if (!Directory.Exists(config.oculusSoftwareFolder + "\\Manifests"))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("This folder does not contain a Manifests directory where your games manifests are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
+                    Error("This folder does not contain a Manifests directory where your games manifests are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
                     Logger.Log(config.oculusSoftwareFolder + " does not contain Manifests folder. Falling back to " + before, LoggingType.Warning);
                     config.oculusSoftwareFolder = before;
                     return false;
@@ -629,11 +753,11 @@ namespace RIFT_Downgrader
             return true;
         }
 
-        public void StoreSearch()
+        public void StoreSearch(string autoterm = "")
         {
             Console.WriteLine();
             Logger.Log("Stating store search. Asking for search term");
-            string term = ConsoleUiController.QuestionString("Search term: ");
+            string term = auto ? autoterm : ConsoleUiController.QuestionString("Search term: ");
             Logger.Log("User entered " + term);
             Console.ForegroundColor = ConsoleColor.White;
             Logger.Log("Requesting results");
@@ -705,16 +829,28 @@ namespace RIFT_Downgrader
                 Console.WriteLine("No results found");
                 return;
             }
-            while(!choosen)
+            if(auto && cont || !auto)
             {
-                sel = ConsoleUiController.QuestionString("App name: ");
-                if(nameId.ContainsKey(sel.ToLower()))
+                if (!cont && auto)
                 {
-                    choosen = true;
-                } else
+                    Error("No app with the name " + term + " found");
+                    Environment.Exit(1);
+                }
+                while (!choosen)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("That app does not exist in the results. Please type the full name displayed above.");
+                    sel = ConsoleUiController.QuestionString("App name ('abort' if the app isn't there): ");
+                    if (nameId.ContainsKey(sel.ToLower()))
+                    {
+                        choosen = true;
+                    }
+                    else
+                    {
+                        Error("That app does not exist in the results. Please type the full name displayed above.");
+                    }
+                    if(sel.ToLower() == "abort")
+                    {
+                        return;
+                    }
                 }
             }
             Logger.Log("Final selection: " + sel);
@@ -738,6 +874,7 @@ namespace RIFT_Downgrader
             {
                 versions.Add(v.node);
             }
+            string ver = "";
             Logger.Log("Fetching versions from online cache");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
             WebClient webClient = new WebClient();
@@ -788,21 +925,35 @@ namespace RIFT_Downgrader
                 DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
                 Console.WriteLine((b.created_date != 0 ? t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year : "Date not available") + "     " + displayName);
-            }
-            bool choosen = false;
-            string ver = "";
-            while(!choosen)
-            {
-                ver = ConsoleUiController.QuestionString("Which version do you want?: ");
-                if (!versionBinary.ContainsKey(ver))
+                if (auto && (commands.GetValue("--versionstring") == b.version || commands.GetValue("--versionid") == b.id || commands.GetValue("--versioncode") == b.versionCode.ToString()))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("This version does not exist.");
-                } else
-                {
-                    choosen = true;
+                    Console.WriteLine("Found version");
+                    ver = displayName;
+                    break;
                 }
             }
+            bool choosen = false;
+            if(ver == "")
+            {
+                if(!cont && auto)
+                {
+                    Error("No version found");
+                    Environment.Exit(1);
+                }
+                while (!choosen)
+                {
+                    ver = ConsoleUiController.QuestionString("Which version do you want?: ");
+                    if (!versionBinary.ContainsKey(ver))
+                    {
+                        Error("This version does not exist.");
+                    }
+                    else
+                    {
+                        choosen = true;
+                    }
+                }
+            }
+            
             Logger.Log("Selection of user is " + ver);
             AndroidBinary selected = versionBinary[ver];
             Console.ForegroundColor = ConsoleColor.White;
@@ -810,13 +961,13 @@ namespace RIFT_Downgrader
             Console.WriteLine(selected.ToString());
             Console.WriteLine();
             Logger.Log("Asking if user wants to download " + selected.ToString());
-            string choice = ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
+            string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
             if (choice.ToLower() == "y" || choice == "")
             {
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " downloaded. Do you want to download it again? (Y/n): ");
+                    choice = auto ? "y" : ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " downloaded. Do you want to download it again? (Y/n): ");
                     if (choice.ToLower() == "n") return;
                     Console.WriteLine("Answer was yes. Deleting existing versions");
                     FileManager.RecreateDirectoryIfExisting(exe + "apps\\" + appId + "\\" + selected.id);
@@ -842,11 +993,10 @@ namespace RIFT_Downgrader
             if (!UpdateAccessToken(true))
             {
                 Logger.Log("Access token not provided. aborting.", LoggingType.Warning);
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Valid access token is needed to proceed. Aborting.");
+                Error("Valid access token is needed to proceed. Aborting.");
                 return;
             }
-            string baseDirectory = exe + "apps\\" + appId + "\\" + binary.id + "\\";
+            string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + binary.id + "\\";
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
             bool success = false;
@@ -854,9 +1004,8 @@ namespace RIFT_Downgrader
             else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
             if(!success)
             {
-                Console.ForegroundColor= ConsoleColor.Red;
                 Logger.Log("Download failed", LoggingType.Warning);
-                Console.WriteLine("Download failed");
+                Error("Download failed");
                 return;
             }
             Console.ForegroundColor = ConsoleColor.White;
@@ -892,16 +1041,16 @@ namespace RIFT_Downgrader
             config.Save();
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
-            string choice = "";
+            string choice;
             if (config.headset == Headset.RIFT)
             {
                 Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
-                choice = ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n)");
+                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n)");
             }
             else
             {
                 Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
-                choice = ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n)");
+                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n)");
             }
             if (choice == "n") return;
             LaunchApp(new AppReturnVersion(a, ReleaseChannelReleaseBinary.FromAndroidBinary(binary)));
@@ -952,26 +1101,28 @@ namespace RIFT_Downgrader
                     password = ConsoleUiController.SecureQuestionString("Password (input hidden): ");
                     if (password.Length < 8)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Please have at least 8 characters for your password.");
-                        Console.ForegroundColor = ConsoleColor.White;
+                        Error("Please have at least 8 characters for your password.");
                     }
                     else good = true;
                 }
-                config.passwordSHA256 = Hasher.GetSHA256OfString(password);
-                config.access_token = at.Substring(0, 5) + PasswordEncryption.Encrypt(at.Substring(5), password);
-                config.tokenRevision = 3;
-                config.Save();
-                GraphQLClient.oculusStoreToken = DecryptToken();
-                if(!ShowUsername()) return false;
-                return true;
+                return SavePasswordAndToken(at, password);
             } else
             {
                 Logger.Log("Token not valid", LoggingType.Warning);
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Token is not valid. Please try getting you access_token with another request as described in the guide.");
+                Error("Token is not valid. Please try getting you access_token with another request as described in the guide.");
                 return false;
             }
+        }
+
+        public bool SavePasswordAndToken(string at, string password)
+        {
+            config.passwordSHA256 = Hasher.GetSHA256OfString(password);
+            config.access_token = at.Substring(0, 5) + PasswordEncryption.Encrypt(at.Substring(5), password);
+            config.tokenRevision = 3;
+            config.Save();
+            GraphQLClient.oculusStoreToken = DecryptToken();
+            if (!ShowUsername()) return false;
+            return true;
         }
 
         public bool ShowUsername()
@@ -990,9 +1141,8 @@ namespace RIFT_Downgrader
                 return true;
             } catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
                 Logger.Log("Error while requesting Username. Token is probably expired.");
-                Console.WriteLine("Error while requesting username. Your token is probably expired. Please update it with option 5 (update access_token) to be able to download games again.");
+                Error("Error while requesting username. Your token is probably expired. Please update it with option 5 (update access_token) to be able to download games again.");
                 return false;
             }
         }
@@ -1013,7 +1163,7 @@ namespace RIFT_Downgrader
             Logger.Log("Creating apps dir");
             FileManager.CreateDirectoryIfNotExisting(exe + "apps");
             Console.WriteLine("Finished");
-            updater.UpdateAssistant();
+            if(!commands.HasArgument("--noupdatecheck")) updater.UpdateAssistant();
         }
     }
 }
