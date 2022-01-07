@@ -38,9 +38,9 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.7.1", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.7.1", "https://github.com/ComputerElite/Rift-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
-            Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
+            Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
             {
                 Logger.Log("Starting in update mode");
@@ -50,16 +50,16 @@ namespace RIFT_Downgrader
 
             DowngradeManager.commands = new CommandLineCommandContainer(args);
             DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--update", "-U" }, true, "Starts in update mode trying to install an update in the parent folder"); // Done
-            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--noupdatecheck" }, true, "Starts Rift Downgrader without checking for updates"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--noupdatecheck" }, true, "Starts Oculus downgrader without checking for updates"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "download", "d" }, true, "Starts download of an app/game or at least opens the version page");
-            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--token" }, false, "Sets the oculus token for Rift Downgrader", "Oculus token"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--token" }, false, "Sets the oculus token for Oculus downgrader", "Oculus token"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--savetoken" }, true, "Saves the token provided via --token. Needs --password to encrypt the token"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--password" }, false, "Password to encrypt a token if --savetoken is specified. If no token is specified this password will be used to decrypt the saved token", "password"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--destination" }, false, "Destination to download a game to", "location"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--search", "-s" }, false, "Searches for an app in the oculus store", "query"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--headset", "-h" }, false, "Changes and saves the headset. QUEST, GEARVR and RIFT are supported", "Headset", "RIFT"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--mod", "-m" }, true, "Attempts to mod quest games if you launch them and then installs the modded version"); // Done
-            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Rift Downgrader will show an Error if you miss an argument");
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Oculus downgrader will show an Error if you miss an argument");
 
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appid" }, false, "Appid of game to download/launch", "appid"); // Done
@@ -229,7 +229,7 @@ namespace RIFT_Downgrader
 
         public void Menu()
         {
-            Console.WriteLine("Welcome to the Rift downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
+            Console.WriteLine("Welcome to the Oculus downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             SetupProgram();
             HandleCLIArgs();
             //LoginWithFacebook("secret");
@@ -237,7 +237,7 @@ namespace RIFT_Downgrader
             {
                 
                 Console.WriteLine();
-                //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
+                //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Oculus downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (UpdateAccessToken(true))
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -245,7 +245,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("Check if you got the right headset selected (option 8). Rift for Oculus Link, Air link and Rift/Rift s. Quest for Quest 1 and 2");
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("[1] Downgrade Beat Saber");
+                    Console.WriteLine("[1] Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayName(config.headset) + ")" : ""));
                     Console.WriteLine("[2] Downgrade another " + HeadsetTools.GetHeadsetDisplayName(config.headset) + " app");
                     Console.WriteLine("[3] " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
                     Console.WriteLine("[4] Open app installation directory");
@@ -260,6 +260,7 @@ namespace RIFT_Downgrader
                     switch (choice)
                     {
                         case "1":
+                            if (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY) continue;
                             if (CheckPassword())
                                 ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
                             break;
@@ -393,7 +394,7 @@ namespace RIFT_Downgrader
                     Error("Token is not set");
                     return false;
                 }
-                Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Rift Downgrader and change your token to set a new password.");
+                Console.WriteLine("Please enter the password you entered when setting your token. If you forgot this password please restart Oculus downgrader and change your token to set a new password.");
                 password = ConsoleUiController.SecureQuestionString("password (input hidden): ");
                 if(!IsPasswordValid(password))
                 {
@@ -416,7 +417,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Logger.Log("Asking which headset the user wants");
-            string choice = ConsoleUiController.QuestionString("Which headset do you want to select? (Quest, GearVR or Rift): ");
+            string choice = ConsoleUiController.QuestionString("Which headset do you want to select? (Quest, GearVR, Go or Rift): ");
             ChangeHeadsetType(choice);
             config.Save();
         }
@@ -439,6 +440,11 @@ namespace RIFT_Downgrader
                     Logger.Log("Setting headset to GearVR");
                     config.headset = Headset.GEARVR;
                     Console.WriteLine("Set headset to GearVR");
+                    break;
+                case "go":
+                    Logger.Log("Setting headset to Go");
+                    config.headset = Headset.PACIFIC;
+                    Console.WriteLine("Set headset to Pacific");
                     break;
                 default:
                     Console.WriteLine("This headset does not exist. Not setting");
@@ -463,6 +469,13 @@ namespace RIFT_Downgrader
                 Logger.Log("Cannot validate files of GearVR app.", LoggingType.Warning);
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine("Cannot validate files of GearVR app.");
+                return;
+            }
+            if (selected.app.headset == Headset.PACIFIC)
+            {
+                Logger.Log("Cannot validate files of Go app.", LoggingType.Warning);
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine("Cannot validate files of Go app.");
                 return;
             }
             Console.WriteLine();
@@ -573,7 +586,7 @@ namespace RIFT_Downgrader
                 Process.Start("explorer", "/select," + baseDirectory);
                 return;
             }
-            if (selected.app.headset == Headset.MONTEREY || selected.app.headset == Headset.GEARVR)
+            if (selected.app.headset == Headset.MONTEREY || selected.app.headset == Headset.GEARVR ||selected.app.headset == Headset.PACIFIC)
             {
                 Logger.Log("Searching downloaded apk in " + baseDirectory);
                 Console.WriteLine("Searching downloaded APK");
@@ -719,7 +732,7 @@ namespace RIFT_Downgrader
                 }
             } else
             {
-                Logger.Log("Installation not done by Rift Downgrader has been detected. Asking user if they want to save the installation.");
+                Logger.Log("Installation not done by Oculus downgrader has been detected. Asking user if they want to save the installation.");
                 string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
                 if (choice.ToLower() == "y" || choice == "")
                 {
@@ -1032,6 +1045,7 @@ namespace RIFT_Downgrader
             GameDownloader.customManifestError = "If you do, check if you got the right headset selected in the main menu. If that's the case update your access_token in case it's expired.";
             if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
             else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+            else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
             else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
             if(!success)
             {
