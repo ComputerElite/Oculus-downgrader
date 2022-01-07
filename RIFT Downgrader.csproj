@@ -109,7 +109,6 @@
     <Compile Include="QuestPatcher.Axaml\SavingContext.cs" />
     <Compile Include="QuestPatcher.Axaml\StringPool.cs" />
     <Compile Include="QuestPatcher.Axaml\WrappedValue.cs" />
-    <Compile Include="Update.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
