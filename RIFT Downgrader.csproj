@@ -98,12 +98,26 @@
     <Compile Include="Package.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QuestPatcher.Axaml\AttributeType.cs" />
+    <Compile Include="QuestPatcher.Axaml\AxmlAttribute.cs" />
+    <Compile Include="QuestPatcher.Axaml\AxmlElement.cs" />
+    <Compile Include="QuestPatcher.Axaml\AxmlLoader.cs" />
+    <Compile Include="QuestPatcher.Axaml\AxmlParseException.cs" />
+    <Compile Include="QuestPatcher.Axaml\AxmlSaver.cs" />
+    <Compile Include="QuestPatcher.Axaml\BinaryStreamExtensions.cs" />
+    <Compile Include="QuestPatcher.Axaml\ResourceType.cs" />
+    <Compile Include="QuestPatcher.Axaml\SavingContext.cs" />
+    <Compile Include="QuestPatcher.Axaml\StringPool.cs" />
+    <Compile Include="QuestPatcher.Axaml\WrappedValue.cs" />
     <Compile Include="Update.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="app.manifest" />
     <None Include="packages.config" />
+    <None Include="QuestPatcher.Axaml\LICENSE" />
+    <None Include="QuestPatcher.Axaml\QuestPatcher.Axml.csproj" />
+    <None Include="QuestPatcher.Axaml\README.md" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ComputerUtils\ComputerUtils\ComputerUtils.csproj">

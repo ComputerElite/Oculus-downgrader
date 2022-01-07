@@ -27,6 +27,7 @@ using OculusGraphQLApiLib;
 using OculusGraphQLApiLib.Results;
 using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
+using QuestPatcher.Axml;
 
 namespace RIFT_Downgrader
 {
@@ -37,7 +38,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.7.0", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.7.1", "https://github.com/ComputerElite/Rift-downgrader", "Rift Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting rift downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -70,7 +71,7 @@ namespace RIFT_Downgrader
 
             if (DowngradeManager.commands.HasArgument("help") || DowngradeManager.commands.HasArgument("?") || DowngradeManager.commands.HasArgument("imconfused"))
             {
-                DowngradeManager.commands.ShowHelp(DowngradeManager.updater.AppName, "You can't count on me for implementing every argument. Some may be there but some aren't.");
+                DowngradeManager.commands.ShowHelp(DowngradeManager.updater.AppName);
                 return;
             }
             DowngradeManager m = new DowngradeManager();
@@ -92,7 +93,7 @@ namespace RIFT_Downgrader
         public static void HandleExtenption(Exception e, string source)
         {
             Logger.Log("An unhandled exception has occured:\n" + e.ToString(), LoggingType.Crash);
-            DowngradeManager.Error("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fix. Press any key to close out.");
+            DowngradeManager.Error("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fixed. Press any key to close out.");
             Console.ReadKey();
             Logger.Log("Exiting cause of unhandled exception.");
             Environment.Exit(0);
@@ -239,8 +240,11 @@ namespace RIFT_Downgrader
                 //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Rift downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (UpdateAccessToken(true))
                 {
-                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.ForegroundColor = ConsoleColor.Yellow;
                     Logger.Log("Showing main menu");
+                    Console.WriteLine("Check if you got the right headset selected (option 8). Rift for Oculus Link, Air link and Rift/Rift s. Quest for Quest 1 and 2");
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine("[1] Downgrade Beat Saber");
                     Console.WriteLine("[2] Downgrade another " + GetHeadsetDisplayName(config.headset) + " app");
                     Console.WriteLine("[3] " + (config.headset == Headset.RIFT ? "Launch" : "Install") + " App");
@@ -638,6 +642,27 @@ namespace RIFT_Downgrader
                 }
 
                 ADBInteractor interactor = new ADBInteractor();
+                Console.WriteLine("Uninstalling old verson.");
+                Logger.Log("uninstalling old version");
+
+                // Get app id
+                ZipArchive apkArchive = ZipFile.OpenRead(apk);
+                MemoryStream manifestStream = new MemoryStream();
+                apkArchive.GetEntry("AndroidManifest.xml").Open().CopyTo(manifestStream);
+                manifestStream.Position = 0;
+                AxmlElement mamamiaManifest = AxmlLoader.LoadDocument(manifestStream);
+                string packageId = "";
+                foreach (AxmlAttribute a in mamamiaManifest.Attributes)
+                {
+                    if(a.Name == "package")
+                    {
+                        packageId = (string)a.Value;
+                        break;
+                    }
+                }
+                apkArchive.Dispose();
+                interactor.Uninstall(packageId);
+
                 Console.WriteLine("Installing apk to Quest if connected (this can take a minute):");
                 Logger.Log("Installing apk");
                 if(!interactor.ForceInstallAPK(apk))
@@ -1000,6 +1025,7 @@ namespace RIFT_Downgrader
             Logger.Log("Creating " + baseDirectory);
             Directory.CreateDirectory(baseDirectory);
             bool success = false;
+            GameDownloader.customManifestError = "If you do, check if you got the right headset selected in the main menu. If that's the case update your access_token in case it's expired.";
             if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
             else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
             if(!success)
@@ -1045,12 +1071,12 @@ namespace RIFT_Downgrader
             if (config.headset == Headset.RIFT)
             {
                 Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
-                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n)");
+                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n): ");
             }
             else
             {
                 Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
-                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n)");
+                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
             }
             if (choice == "n") return;
             LaunchApp(new AppReturnVersion(a, ReleaseChannelReleaseBinary.FromAndroidBinary(binary)));
@@ -1095,7 +1121,7 @@ namespace RIFT_Downgrader
             {
                 bool good = false;
                 Logger.Log("Token valid. asking for password.");
-                Console.WriteLine("You now need to provide a password to encrypt yout token for storing. If you forget this password at any point you just have to provide your Token again.");
+                Console.WriteLine("You now need to provide a password to encrypt your token for storing. If you forget this password at any point you just have to provide your Token again.");
                 while(!good)
                 {
                     password = ConsoleUiController.SecureQuestionString("Password (input hidden): ");
