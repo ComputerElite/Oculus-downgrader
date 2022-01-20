@@ -28,6 +28,7 @@ using OculusGraphQLApiLib.Results;
 using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
 using QuestPatcher.Axml;
+using OculusGraphQLApiLib.Folders;
 
 namespace RIFT_Downgrader
 {
@@ -455,37 +456,55 @@ namespace RIFT_Downgrader
 
         public void ValidateVersionUser()
         {
-            Console.ForegroundColor = ConsoleColor.White;
-            AppReturnVersion selected = SelectFromInstalledApps();
-            if (selected.app.headset == Headset.MONTEREY)
+            
+            if (config.headset == Headset.MONTEREY)
             {
                 Logger.Log("Cannot validate files of Quest app.", LoggingType.Warning);
                 Console.ForegroundColor= ConsoleColor.DarkYellow;
                 Console.WriteLine("Cannot validate files of Quest app.");
                 return;
             }
-            if (selected.app.headset == Headset.GEARVR)
+            if (config.headset == Headset.GEARVR)
             {
                 Logger.Log("Cannot validate files of GearVR app.", LoggingType.Warning);
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine("Cannot validate files of GearVR app.");
                 return;
             }
-            if (selected.app.headset == Headset.PACIFIC)
+            if (config.headset == Headset.PACIFIC)
             {
                 Logger.Log("Cannot validate files of Go app.", LoggingType.Warning);
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine("Cannot validate files of Go app.");
                 return;
             }
+            Console.ForegroundColor = ConsoleColor.White;
+            AppReturnVersion selected = SelectFromInstalledApps();
             Console.WriteLine();
-            ValidateVersion(selected);
+            string choice = ConsoleUiController.QuestionString("Do you want to validate your current installation (I) or some version you have downloaded (d): ");
+            if(choice.ToLower() == "d")
+            {
+                ValidateVersion(selected);
+                return;
+            }
+            config.AddCanonicalNames();
+            if (!Validator.ValidateGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName)))
+            {
+                choice = ConsoleUiController.QuestionString("As the game is corrupted or modified, do you want to repair it? (Y/n): ");
+                if (choice.ToLower() == "n") return;
+                Validator.RepairGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName), DecryptToken(), File.ReadAllText(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName) + "RiftDowngrader_appId.txt"));
+            }
         }
 
         public void ValidateVersion(AppReturnVersion selected)
         {
             string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
-            Validator.ValidateGameInstall(baseDirectory, baseDirectory + "manifest.json");
+            if(!Validator.ValidateGameInstall(baseDirectory, baseDirectory + "manifest.json"))
+            {
+                string choice = ConsoleUiController.QuestionString("As the game is corrupted or modified, do you want to repair it? (Y/n): ");
+                if (choice.ToLower() == "n") return;
+                Validator.RepairGameInstall(baseDirectory, baseDirectory + "manifest.json", DecryptToken(), selected.version.id);
+            }
         }
 
         public AppReturnVersion SelectFromInstalledApps()
@@ -677,12 +696,13 @@ namespace RIFT_Downgrader
                         break;
                     }
                 }
+                List<AndroidUser> users = interactor.SelectUsers("install the game version.");
                 apkArchive.Dispose();
-                interactor.Uninstall(packageId);
+                interactor.Uninstall(packageId, users);
 
                 Console.WriteLine("Installing apk to " + HeadsetTools.GetHeadsetDisplayName(config.headset) + " if connected (this can take a minute):");
                 Logger.Log("Installing apk");
-                if(!interactor.ForceInstallAPK(apk))
+                if(!interactor.InstallAPK(apk, users))
                 {
                     Logger.Log("Install failed", LoggingType.Warning);
                     Error("Install failed. See above for more info");
@@ -702,7 +722,7 @@ namespace RIFT_Downgrader
                 return;
             }
             Console.ForegroundColor = ConsoleColor.White;
-            string appDir = config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName + "\\";
+            string appDir = OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName);
             Logger.Log("Starting app copy to " + appDir);
             Console.WriteLine("Copying application (this can take a few minutes)");
             if (File.Exists(appDir + "manifest.json"))
@@ -723,7 +743,7 @@ namespace RIFT_Downgrader
                     {
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
-                        FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\" + installedId, true);
+                        FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\" + installedId, true);
                         Good("Finished\n");
                     }
                     Console.ForegroundColor = ConsoleColor.White;
@@ -738,15 +758,15 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("User wanted to save installed version. Copying");
                     Console.WriteLine("Copying from Oculus to app directory");
-                    FileManager.DirectoryCopy(config.oculusSoftwareFolder + "\\Software\\" + manifest.canonicalName, exe + "apps\\" + selected.app.id + "\\original_install", true);
+                    FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\original_install", true);
                 }
             }
             Logger.Log("Copying game");
             FileManager.DirectoryCopy(baseDirectory, appDir, true);
             Logger.Log("Copying manifest");
-            File.Copy(baseDirectory + "manifest.json", config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json", true);
+            File.Copy(baseDirectory + "manifest.json", OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), true);
             Logger.Log("Adding minimal manifest");
-            File.WriteAllText(config.oculusSoftwareFolder + "\\Manifests\\" + manifest.canonicalName + ".json.mini", JsonSerializer.Serialize(manifest.GetMinimal()));
+            File.WriteAllText(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName) + ".mini", JsonSerializer.Serialize(manifest.GetMinimal()));
             Logger.Log("Adding version id into RiftDowngrader_appId.txt");
             File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.version.id);
             Good("Finished.\nLaunching");
