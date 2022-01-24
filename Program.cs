@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.8.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.8.3", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -674,6 +674,7 @@ namespace RIFT_Downgrader
                         Logger.Log("QuestPatcher exited with exit code " + p.ExitCode + " which is not 0 indicating an error. Vanilla version will be installed.");
                         Console.ForegroundColor = ConsoleColor.DarkYellow;
                         Console.WriteLine("QuestPatcher was unable to patch the APK. I'll be installing the vanilla version.");
+                        Console.ForegroundColor= ConsoleColor.White;
                     }
                 }
 
@@ -697,6 +698,11 @@ namespace RIFT_Downgrader
                     }
                 }
                 List<AndroidUser> users = interactor.SelectUsers("install the game version.");
+                if(users.Count <= 0)
+                {
+                    Error("No user selected. Maybe your Quest isn't connected. Please check the connection.");
+                    return;
+                }
                 apkArchive.Dispose();
                 interactor.Uninstall(packageId, users);
 
