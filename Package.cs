@@ -50,9 +50,9 @@ namespace RIFT_Downgrader
 
         public void MakeFilenamesSafe()
         {
-            file = MakeFilenameSafe(file);
-            directoryDestination = MakeFilenameSafe(directoryDestination);
-            fileDestination = MakeFilenameSafe(fileDestination);
+            if(file != null) file = MakeFilenameSafe(file);
+            if(directoryDestination != null) directoryDestination = MakeFilenameSafe(directoryDestination);
+            if(fileDestination != null) fileDestination = MakeFilenameSafe(fileDestination);
         }
 
         public string MakeFilenameSafe(string filename)
