@@ -48,6 +48,18 @@ namespace RIFT_Downgrader
             return (ActionType)Enum.Parse(typeof(ActionType), actionType);
         }
 
+        public void MakeFilenamesSafe()
+        {
+            file = MakeFilenameSafe(file);
+            directoryDestination = MakeFilenameSafe(directoryDestination);
+            fileDestination = MakeFilenameSafe(fileDestination);
+        }
+
+        public string MakeFilenameSafe(string filename)
+        {
+            return filename.Replace("..\\", "");
+        }
+
         public void ExecuteAction(Package package)
         {
             bool execute = false;
@@ -64,6 +76,7 @@ namespace RIFT_Downgrader
                         Manifest m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.config.oculusSoftwareFolder + "\\Manifests\\" + app.canonicalName + ".json"));
                         if(!o.versionCodes.Contains(m.versionCode) && !o.versions.Contains(m.version)) break; // Check installed
                         string dir = DowngradeManager.config.oculusSoftwareFolder + "\\Software\\" + app.canonicalName + "\\";
+                        MakeFilenamesSafe();
                         switch (GetActionType())
                         {
                             case ActionType.FILECOPY:
