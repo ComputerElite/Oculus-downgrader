@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.8.4", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.0", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -233,7 +233,6 @@ namespace RIFT_Downgrader
             Console.WriteLine("Welcome to Oculus downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             SetupProgram();
             HandleCLIArgs();
-            //LoginWithFacebook("secret");
             while (true)
             {
                 
@@ -308,7 +307,7 @@ namespace RIFT_Downgrader
         }
 
         // This almost works. I can get a token but can't sign in to oculus with it.
-        public void LoginWithFacebook(string appId)
+        public string LoginWithFacebook()
         {
             Logger.Log("Starting login via Facebook");
             if(!File.Exists(exe + "msedgedriver.exe"))
@@ -332,36 +331,29 @@ namespace RIFT_Downgrader
                 {
                     Error("Failed to extract Microsoft edge driver. You can't log in with Facebook");
                     Logger.Log("Extract failed");
-                    return;
+                    return "";
                 }
             }
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well. Press any key to open the browser.");
+            Console.ReadKey();
             Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
             Console.WriteLine();
-            string loginUrl = "https://www.facebook.com/v12.0/dialog/oauth?client_id=" + appId + "&redirect_uri=https://www.facebook.com/connect/login_success.html&state=Login&response_type=token&scope=email,public_profile,user_birthday,user_friends";
-            Logger.Log("Navigating Edge driver to " + loginUrl);
-            EdgeDriver driver = new EdgeDriver(exe);
-            driver.Url = loginUrl;
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-            wait.Until(d => d.Url.StartsWith("https://www.facebook.com/connect/login_success.html"));
-            string url = driver.Url.Replace("#", "?");
-            driver.Quit();
-            if(!url.StartsWith("https://www.facebook.com/connect/login_success.html"))
-            {
-                Error("The login window has been closed due to exceeding 5 minutes. If you wish to try again simpyl select the login option again");
-                return;
-            }
-            string fbToken = HttpUtility.ParseQueryString(new Uri(url).Query.Substring(1)).Get("access_token");
-            if(fbToken == null)
-            {
-                Error("There was an error logging you in.");
-                return;
-            }
-            Logger.Log("Facebook token recieved. Requesting Oculus token");
-            Console.WriteLine("Logged into Facebook. I'll now request a token for Oculus");
+            Console.ForegroundColor = ConsoleColor.White;
+            string oculusUrl = "https://www.oculus.com/";
 
-            Console.WriteLine(fbToken);
-            Console.WriteLine();
-            Console.WriteLine(url);
+            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions { });
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
+            driver.Url = oculusUrl;
+            wait.Until(d => d.Url != oculusUrl);
+
+            wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
+            wait.Until(d => d.Url == "https://www.oculus.com/");
+            string token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
+            driver.Quit();
+            Logger.Log("Got Oculus token");
+            Console.WriteLine("Logged into Oculus");
+            return token;
         }
 
         public void InstallPackage()
@@ -756,7 +748,7 @@ namespace RIFT_Downgrader
                     Logger.Log("Continuing with copy to oculus folder");
                     Console.WriteLine("Copying from app directory to oculus");
                 }
-            } else
+            } else if(Directory.Exists(appDir))
             {
                 Logger.Log("Installation not done by Oculus downgrader has been detected. Asking user if they want to save the installation.");
                 string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
@@ -764,7 +756,7 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("User wanted to save installed version. Copying");
                     Console.WriteLine("Copying from Oculus to app directory");
-                    FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\original_install", true);
+                    FileManager.DirectoryCopy(appDir, exe + "apps\\" + selected.app.id + "\\original_install", true);
                 }
             }
             Logger.Log("Copying game");
@@ -800,10 +792,18 @@ namespace RIFT_Downgrader
                 }
                 if (!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
                 {
-                    Error("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
-                    Logger.Log(config.oculusSoftwareFolder + " does not contain Software folder. Falling back to " + before, LoggingType.Warning);
-                    config.oculusSoftwareFolder = before;
-                    return false;
+                    if(config.oculusSoftwareFolder.EndsWith("\\Software"))
+                    {
+                        config.oculusSoftwareFolder = FileManager.GetParentDirIfExisting(config.oculusSoftwareFolder);
+
+                    }
+                    if(!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
+                    {
+                        Error("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
+                        Logger.Log(config.oculusSoftwareFolder + " does not contain Software folder. Falling back to " + before, LoggingType.Warning);
+                        config.oculusSoftwareFolder = before;
+                        return false;
+                    }
                 }
                 if (!Directory.Exists(config.oculusSoftwareFolder + "\\Manifests"))
                 {
@@ -824,7 +824,7 @@ namespace RIFT_Downgrader
         public void StoreSearch(string autoterm = "")
         {
             Console.WriteLine();
-            Logger.Log("Stating store search. Asking for search term");
+            Logger.Log("Starting store search. Asking for search term");
             string term = auto ? autoterm : ConsoleUiController.QuestionString("Search term: ");
             Logger.Log("User entered " + term);
             Console.ForegroundColor = ConsoleColor.White;
@@ -1170,25 +1170,37 @@ namespace RIFT_Downgrader
             }
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
-            Logger.Log("Asking user if they want a guide");
-            string choice = ConsoleUiController.QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
+            Logger.Log("Asking user if they want to use the new selenium sign in method.");
+            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
+            string at = "";
             if (choice.ToLower() == "y" || choice == "")
             {
-                //Console.WriteLine("Guide does not exist atm.");
-                Logger.Log("Showing guide");
-                Process.Start("https://computerelite.github.io/tools/Oculus/ObtainToken.html");
-            }
-            Console.WriteLine();
-            Logger.Log("Asking for access_token");
-            Console.WriteLine("Please enter your access_token (it'll be saved locally and is used to authenticate downloads)");
-            string at = ConsoleUiController.SecureQuestionString("access_token (hidden): ");
-            Logger.Log("Removing property name if needed");
-            String[] parts = at.Split(':');
-            if(parts.Length >= 2)
+                at = LoginWithFacebook();
+            } else
             {
-                at = parts[1];
+                Logger.Log("Asking user if they want a guide");
+                choice = ConsoleUiController.QuestionString("Do you need a guide on how to get the access token? (Y/n): ");
+                Console.ForegroundColor = ConsoleColor.White;
+                if (choice.ToLower() == "y" || choice == "")
+                {
+                    //Console.WriteLine("Guide does not exist atm.");
+                    Logger.Log("Showing guide");
+                    Process.Start("https://computerelite.github.io/tools/Oculus/ObtainToken.html");
+                }
+                Console.WriteLine();
+                Logger.Log("Asking for access_token");
+                Console.WriteLine("Please enter your access_token (it'll be saved locally and is used to authenticate downloads)");
+                at = ConsoleUiController.SecureQuestionString("access_token (hidden): ");
+                Logger.Log("Removing property name if needed");
+                String[] parts = at.Split(':');
+                if (parts.Length >= 2)
+                {
+                    at = parts[1];
+                }
             }
+
+           
             at = at.Replace(" ", "");
             if (TokenTools.IsUserTokenValid(at))
             {
