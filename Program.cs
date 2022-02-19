@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.0", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.1", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -70,7 +70,12 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versionstring" }, false, "VersionString of the game version to download/launch. Less precise than other version selecting", "versionstring"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--copyold" }, true, "If you want to backup your current install"); // Done
 
-            if (DowngradeManager.commands.HasArgument("help") || DowngradeManager.commands.HasArgument("?") || DowngradeManager.commands.HasArgument("imconfused"))
+            if(DowngradeManager.commands.HasArgument("imconfused"))
+            {
+                Console.WriteLine("How DARE you be confused. Get unconfused! https://youtu.be/TMrtLsQbaok?t=188");
+                return;
+            }
+            if (DowngradeManager.commands.HasArgument("help") || DowngradeManager.commands.HasArgument("?"))
             {
                 DowngradeManager.commands.ShowHelp(DowngradeManager.updater.AppName);
                 return;
@@ -82,16 +87,16 @@ namespace RIFT_Downgrader
         public static void SetupExceptionHandlers()
         {
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-            HandleExtenption((Exception)e.ExceptionObject, "AppDomain.CurrentDomain.UnhandledException");
+            HandleExtenption((Exception)e.ExceptionObject);
 
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                HandleExtenption(e.Exception, "TaskScheduler.UnobservedTaskException");
+                HandleExtenption(e.Exception);
                 e.SetObserved();
             };
         }
 
-        public static void HandleExtenption(Exception e, string source)
+        public static void HandleExtenption(Exception e)
         {
             Logger.Log("An unhandled exception has occured:\n" + e.ToString(), LoggingType.Crash);
             DowngradeManager.Error("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fixed. Press any key to close out.");
@@ -110,8 +115,8 @@ namespace RIFT_Downgrader
         public static string password = "";
         public static Updater updater = new Updater();
         public static CommandLineCommandContainer commands = null;
-        string qPVersion = "2.2.4";
-        string qPDownloadLink = "https://github.com/ComputerElite/QuestPatcherBuilds/releases/download/2.2.4/QuestPatcher.zip";
+        public string qPVersion = "2.2.4";
+        public string qPDownloadLink = "https://github.com/ComputerElite/QuestPatcherBuilds/releases/download/2.2.4/QuestPatcher.zip";
         public bool first = true;
         public bool auto = false;
         public bool cont = false;
@@ -235,7 +240,6 @@ namespace RIFT_Downgrader
             HandleCLIArgs();
             while (true)
             {
-                
                 Console.WriteLine();
                 //if(!IsTokenValid(config.access_token)) Console.WriteLine("Hello. For Oculus downgrader to function you need to provide your access_token in order to do requests to Oculus and basically use this tool");
                 if (UpdateAccessToken(true))
@@ -306,7 +310,7 @@ namespace RIFT_Downgrader
             }
         }
 
-        // This almost works. I can get a token but can't sign in to oculus with it.
+        // It just works. But it complains that Edge is new and not V 96 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
         public string LoginWithFacebook()
         {
             Logger.Log("Starting login via Facebook");
@@ -542,6 +546,7 @@ namespace RIFT_Downgrader
             Logger.Log("Downloaded versions of " + selected.name);
 
             Dictionary<string, ReleaseChannelReleaseBinary> versionBinary = new Dictionary<string, ReleaseChannelReleaseBinary>();
+            
             foreach (ReleaseChannelReleaseBinary b in selected.versions)
             {
                 bool exists = false;
@@ -559,6 +564,14 @@ namespace RIFT_Downgrader
                 Logger.Log("   - " + displayName);
                 Console.WriteLine(t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year + "     " + displayName);
             }
+            /*
+            if (Directory.Exists(exe + "apps\\" + selected.id + "\\original_install"))
+            {
+                versionBinary.Add("original_install", new ReleaseChannelReleaseBinary { id = "original_install" });
+                Logger.Log("   - original_install");
+                Console.WriteLine("UNKNOWN DATE" + "   original_install");
+            }
+            */
             choosen = false;
             string ver = "";
             while (!choosen)
@@ -660,7 +673,7 @@ namespace RIFT_Downgrader
                     }
                     p.WaitForExit();
                     Logger.Log("QP exit code: " + p.ExitCode);
-                    if(File.Exists(apk + ".patched.apk") && p.ExitCode == 0) apk = apk + ".patched.apk";
+                    if(File.Exists(apk + ".patched.apk") && p.ExitCode == 0) apk += ".patched.apk";
                     else
                     {
                         Logger.Log("QuestPatcher exited with exit code " + p.ExitCode + " which is not 0 indicating an error. Vanilla version will be installed.");
@@ -730,7 +743,7 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("Version is already copied. Launching: " + appDir + manifest.launchFile);
                     Console.WriteLine("Version is already in the library folder. Launching");
-                    Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
+                    Process.Start(appDir + manifest.launchFile, (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs);
                     return;
                 } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
                 {
@@ -769,7 +782,7 @@ namespace RIFT_Downgrader
             File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.version.id);
             Good("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
-            Process.Start(appDir + manifest.launchFile, (manifest.launchParameters != null ? manifest.launchParameters : "") + " " + selected.version.extraLaunchArgs);
+            Process.Start(appDir + manifest.launchFile, (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs);
         }
 
         public bool CheckOculusFolder(bool set = false)
@@ -777,7 +790,7 @@ namespace RIFT_Downgrader
             if(!config.oculusSoftwareFolderSet || set)
             {
                 Logger.Log("Asking user for Oculus folder");
-                if (!config.oculusSoftwareFolderSet) config.oculusSoftwareFolder = (string)Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus").GetValue("Base") + "Software";
+                if (!config.oculusSoftwareFolderSet && Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus") != null) config.oculusSoftwareFolder = (string)Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Oculus VR, LLC\Oculus").GetValue("Base") + "Software";
                 string f = ConsoleUiController.QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet. ") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
@@ -1058,8 +1071,7 @@ namespace RIFT_Downgrader
                             Console.WriteLine("Failed to repair/download game");
                             return;
                         }
-                        Console.ForegroundColor= ConsoleColor.Green;
-                        Console.WriteLine("Finished. App downloaded and ready to get launched.");
+                        StartDownload(selected, appId, appName, true);
                         return;
                     }
                 }
@@ -1078,29 +1090,32 @@ namespace RIFT_Downgrader
             return config.access_token.Substring(0, 5) + PasswordEncryption.Decrypt(config.access_token.Substring(5), password);
         }
 
-        public void StartDownload(AndroidBinary binary, string appId, string appName)
+        public void StartDownload(AndroidBinary binary, string appId, string appName, bool skipDownload = false)
         {
-            Console.ForegroundColor = ConsoleColor.White;
-            if (!UpdateAccessToken(true))
+            if(!skipDownload)
             {
-                Logger.Log("Access token not provided. aborting.", LoggingType.Warning);
-                Error("Valid access token is needed to proceed. Aborting.");
-                return;
-            }
-            string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + binary.id + "\\";
-            Logger.Log("Creating " + baseDirectory);
-            Directory.CreateDirectory(baseDirectory);
-            bool success = false;
-            GameDownloader.customManifestError = "If you do, check if you got the right headset selected in the main menu. If that's the case update your access_token in case it's expired.";
-            if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
-            else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
-            else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
-            else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
-            if(!success)
-            {
-                Logger.Log("Download failed", LoggingType.Warning);
-                Error("Download failed");
-                return;
+                Console.ForegroundColor = ConsoleColor.White;
+                if (!UpdateAccessToken(true))
+                {
+                    Logger.Log("Access token not provided. aborting.", LoggingType.Warning);
+                    Error("Valid access token is needed to proceed. Aborting.");
+                    return;
+                }
+                string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + binary.id + "\\";
+                Logger.Log("Creating " + baseDirectory);
+                Directory.CreateDirectory(baseDirectory);
+                bool success;
+                GameDownloader.customManifestError = "If you do, check if you got the right headset selected in the main menu. If that's the case update your access_token in case it's expired.";
+                if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+                else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+                else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+                else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
+                if (!success)
+                {
+                    Logger.Log("Download failed", LoggingType.Warning);
+                    Error("Download failed");
+                    return;
+                }
             }
             Console.ForegroundColor = ConsoleColor.White;
             Logger.Log("Adding version to config");
@@ -1123,10 +1138,7 @@ namespace RIFT_Downgrader
                     if(!exists) config.apps[aa].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
                 }
             }
-            App a = new App();
-            a.name = appName;
-            a.id = appId;
-            a.headset = config.headset;
+            App a = new App() { name = appName, id = appId, headset = config.headset};
             a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
             if (!found)
             {
@@ -1173,7 +1185,7 @@ namespace RIFT_Downgrader
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
             string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
-            string at = "";
+            string at;
             if (choice.ToLower() == "y" || choice == "")
             {
                 at = LoginWithFacebook();
@@ -1252,7 +1264,7 @@ namespace RIFT_Downgrader
                 return true;
             } catch (Exception ex)
             {
-                Logger.Log("Error while requesting Username. Token is probably expired.");
+                Logger.Log("Error while requesting Username. Token is probably expired: \n" + ex.ToString());
                 Error("Error while requesting username. Your token is probably expired. Please update it with option 5 (update access_token) to be able to download games again.");
                 return false;
             }

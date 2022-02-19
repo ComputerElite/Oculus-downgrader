@@ -62,7 +62,6 @@ namespace RIFT_Downgrader
 
         public void ExecuteAction(Package package)
         {
-            bool execute = false;
             Logger.Log("Starting " + actionName);
             Console.WriteLine("Starting " + actionName);
             foreach(PackageOn o in on)
