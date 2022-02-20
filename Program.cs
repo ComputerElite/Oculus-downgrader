@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.1", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -249,14 +249,14 @@ namespace RIFT_Downgrader
                     Console.WriteLine("Check if you got the right headset selected (option 8). Rift for Oculus Link, Air link and Rift/Rift s. Quest for Quest 1 and 2");
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("[1] Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayName(config.headset) + ")" : ""));
-                    Console.WriteLine("[2] Downgrade another " + HeadsetTools.GetHeadsetDisplayName(config.headset) + " app");
+                    Console.WriteLine("[1] Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
+                    Console.WriteLine("[2] Downgrade another " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " app");
                     Console.WriteLine("[3] " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
                     Console.WriteLine("[4] Open app installation directory");
                     Console.WriteLine("[5] Update access_token");
                     Console.WriteLine("[6] Update oculus folder");
                     Console.WriteLine("[7] Validate installed app");
-                    Console.WriteLine("[8] Change Headset (currently " + HeadsetTools.GetHeadsetDisplayName(config.headset) + ")");
+                    Console.WriteLine("[8] Change Headset (currently " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")");
                     Console.WriteLine("[9] Install Package");
                     Console.WriteLine("[10] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
@@ -477,7 +477,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
             AppReturnVersion selected = SelectFromInstalledApps();
             Console.WriteLine();
-            string choice = ConsoleUiController.QuestionString("Do you want to validate your current installation (I) or some version you have downloaded (d): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to validate your current installation (I) or version " + selected.version.version + " you have downloaded (d): ");
             if(choice.ToLower() == "d")
             {
                 ValidateVersion(selected);
@@ -520,7 +520,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine(a.name);
                 } else
                 {
-                    Logger.Log("Not showing " + a.name + " as it is not for " + HeadsetTools.GetHeadsetDisplayName(config.headset));
+                    Logger.Log("Not showing " + a.name + " as it is not for " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset));
                 }
             }
             Console.WriteLine();
@@ -711,7 +711,7 @@ namespace RIFT_Downgrader
                 apkArchive.Dispose();
                 interactor.Uninstall(packageId, users);
 
-                Console.WriteLine("Installing apk to " + HeadsetTools.GetHeadsetDisplayName(config.headset) + " if connected (this can take a minute):");
+                Console.WriteLine("Installing apk to " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " if connected (this can take a minute):");
                 Logger.Log("Installing apk");
                 if(!interactor.InstallAPK(apk, users))
                 {
