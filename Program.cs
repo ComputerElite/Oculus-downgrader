@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.3", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.4", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -318,7 +318,7 @@ namespace RIFT_Downgrader
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/96.0.1054.53/edgedriver_win32.zip", "msedgedriver.zip");
+                d.StartDownload("https://msedgedriver.azureedge.net/98.0.1108.62/edgedriver_win32.zip", "msedgedriver.zip");
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
@@ -1183,7 +1183,7 @@ namespace RIFT_Downgrader
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
-            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus. If logging in didn't work press n? (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
             if (choice.ToLower() == "y" || choice == "")
