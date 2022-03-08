@@ -318,7 +318,7 @@ namespace RIFT_Downgrader
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/98.0.1108.62/edgedriver_win32.zip", "msedgedriver.zip");
+                d.StartDownload("https://msedgedriver.azureedge.net/99.0.1150.36/edgedriver_win32.zip", "msedgedriver.zip");
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
