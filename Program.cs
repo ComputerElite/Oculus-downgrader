@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.4", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.5", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -988,7 +988,7 @@ namespace RIFT_Downgrader
             Logger.Log("Versions of " + appName);
             Console.WriteLine("Versions of " + appName);
             Console.WriteLine();
-            versions = versions.OrderBy(b => b.created_date).ToList<AndroidBinary>();
+            versions = versions.OrderBy(b => b.version_code).ToList<AndroidBinary>();
             Dictionary<string, AndroidBinary> versionBinary = new Dictionary<string, AndroidBinary>();
             foreach(AndroidBinary b in versions)
             {
@@ -1005,7 +1005,7 @@ namespace RIFT_Downgrader
                 versionBinary.Add(displayName, b);
                 DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
-                Console.WriteLine((b.created_date != 0 ? t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year : "Date not available") + "     " + displayName);
+                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName);
                 if (auto && (commands.GetValue("--versionstring") == b.version || commands.GetValue("--versionid") == b.id || commands.GetValue("--versioncode") == b.versionCode.ToString()))
                 {
                     Console.WriteLine("Found version");
