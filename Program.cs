@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.5", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -743,7 +743,7 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("Version is already copied. Launching: " + appDir + manifest.launchFile);
                     Console.WriteLine("Version is already in the library folder. Launching");
-                    Process.Start(appDir + manifest.launchFile, (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs);
+                    Process.Start(new ProcessStartInfo { Arguments = (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs, FileName = appDir + manifest.launchFile, WorkingDirectory = appDir });
                     return;
                 } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
                 {
@@ -782,7 +782,7 @@ namespace RIFT_Downgrader
             File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.version.id);
             Good("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
-            Process.Start(appDir + manifest.launchFile, (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs);
+            Process.Start(new ProcessStartInfo { Arguments = (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs, FileName = appDir + manifest.launchFile, WorkingDirectory = appDir });
         }
 
         public bool CheckOculusFolder(bool set = false)
