@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -51,7 +51,7 @@ namespace RIFT_Downgrader
 
             DowngradeManager.commands = new CommandLineCommandContainer(args);
             DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--update", "-U" }, true, "Starts in update mode trying to install an update in the parent folder"); // Done
-            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--noupdatecheck" }, true, "Starts Oculus downgrader without checking for updates"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "--noupdatecheck", "-nU" }, true, "Starts Oculus downgrader without checking for updates"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string>() { "download", "d" }, true, "Starts download of an app/game or at least opens the version page");
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--token" }, false, "Sets the oculus token for Oculus downgrader", "Oculus token"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--savetoken" }, true, "Saves the token provided via --token. Needs --password to encrypt the token"); // Done
@@ -63,6 +63,7 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Oculus downgrader will show an Error if you miss an argument");
 
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "backup", "b" }, true, "Creates a backup of an app"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appid" }, false, "Appid of game to download/launch", "appid"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appname" }, false, "Name of game to launch", "name"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versioncode" }, false, "VersonCode of the game version to download/launch", "versioncode"); // Done
@@ -185,20 +186,31 @@ namespace RIFT_Downgrader
                 if ((commands.HasArgument("--appid") || commands.HasArgument("--appname")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid"))) {
                     foreach(App a in config.apps)
                     {
-                        Console.WriteLine(a.name);
-                        Console.WriteLine(commands.GetValue("--appname").ToLower());
                         if(a.name.ToLower() == commands.GetValue("--appname").ToLower() || a.id == commands.GetValue("--appid"))
                         {
                             if (hasHeadset && headset != a.headset) continue;
                             foreach(ReleaseChannelReleaseBinary b in a.versions)
                             {
-                                Console.WriteLine(b.ToString());
                                 if(b.id == commands.GetValue("--versionid") || b.version_code.ToString() == commands.GetValue("--versioncode") || b.version == commands.GetValue("--versionstring"))
                                 {
                                     // Matching version, launch it you idiot
                                     auto = true;
                                     LaunchApp(new AppReturnVersion(a, b), false);
                                     Environment.Exit(0);
+                                }
+                            }
+                            foreach (string d in Directory.GetDirectories(exe + "apps\\" + a.id))
+                            {
+                                string dirName = Path.GetFileName(d);
+                                if (dirName.StartsWith("backup") || dirName.StartsWith("original_install"))
+                                {
+                                    if (dirName == commands.GetValue("--versionid"))
+                                    {
+                                        // Matching version, launch it you idiot
+                                        auto = true;
+                                        LaunchApp(new AppReturnVersion(a, new ReleaseChannelReleaseBinary { id = commands.GetValue("--versionid") }), false);
+                                        Environment.Exit(0);
+                                    }
                                 }
                             }
                         }
@@ -211,7 +223,30 @@ namespace RIFT_Downgrader
                 }
                 Environment.Exit(1);
             }
-            if(commands.HasArgument("download"))
+            if (commands.HasArgument("backup"))
+            {
+                if ((commands.HasArgument("--appid") || commands.HasArgument("--appname")))
+                {
+                    foreach (App a in config.apps)
+                    {
+                        if (a.name.ToLower() == commands.GetValue("--appname").ToLower() || a.id == commands.GetValue("--appid"))
+                        {
+                            if (hasHeadset && headset != a.headset) continue;
+                            // Matching version, launch it you idiot
+                            auto = true;
+                            CreateBackup(new AppReturnVersion(a, new ReleaseChannelReleaseBinary()));
+                            Environment.Exit(0);
+                        }
+                    }
+                    Error("App not found");
+                }
+                else
+                {
+                    Error("You have to have --appid/--appname to launch an app");
+                }
+                Environment.Exit(1);
+            }
+            if (commands.HasArgument("download"))
             {
                 auto = true;
                 if((commands.HasArgument("--appname") || commands.HasArgument("--appid")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid")) || commands.HasArgument("--search") && commands.HasArgument("--"))
@@ -249,16 +284,17 @@ namespace RIFT_Downgrader
                     Console.WriteLine("Check if you got the right headset selected (option 8). Rift for Oculus Link, Air link and Rift/Rift s. Quest for Quest 1 and 2");
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("[1] Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
-                    Console.WriteLine("[2] Downgrade another " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " app");
-                    Console.WriteLine("[3] " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
-                    Console.WriteLine("[4] Open app installation directory");
-                    Console.WriteLine("[5] Update access_token");
-                    Console.WriteLine("[6] Update oculus folder");
-                    Console.WriteLine("[7] Validate installed app");
-                    Console.WriteLine("[8] Change Headset (currently " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")");
-                    Console.WriteLine("[9] Install Package");
-                    Console.WriteLine("[10] Exit");
+                    Console.WriteLine("[1]  Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
+                    Console.WriteLine("[2]  Downgrade another " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " app");
+                    Console.WriteLine("[3]  " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
+                    Console.WriteLine("[4]  Open app installation directory");
+                    Console.WriteLine("[5]  Update access_token");
+                    Console.WriteLine("[6]  Update oculus folder");
+                    Console.WriteLine("[7]  Validate installed app");
+                    Console.WriteLine("[8]  Change Headset (currently " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")");
+                    Console.WriteLine("[9]  Install Package");
+                    Console.WriteLine("[10] Create Backup");
+                    Console.WriteLine("[11] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -297,6 +333,9 @@ namespace RIFT_Downgrader
                             InstallPackage();
                             break;
                         case "10":
+                            CreateBackup();
+                            break;
+                        case "11":
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
@@ -475,7 +514,7 @@ namespace RIFT_Downgrader
                 return;
             }
             Console.ForegroundColor = ConsoleColor.White;
-            AppReturnVersion selected = SelectFromInstalledApps();
+            AppReturnVersion selected = SelectFromInstalledApps(true, "validate");
             Console.WriteLine();
             string choice = ConsoleUiController.QuestionString("Do you want to validate your current installation (I) or version " + selected.version.version + " you have downloaded (d): ");
             if(choice.ToLower() == "d")
@@ -503,8 +542,12 @@ namespace RIFT_Downgrader
             }
         }
 
-        public AppReturnVersion SelectFromInstalledApps()
+        public AppReturnVersion SelectFromInstalledApps(bool selectVersion = true, string actionName = "")
         {
+            if(actionName == "")
+            {
+                actionName = HeadsetTools.GetHeadsetInstallActionName(config.headset).ToLower();
+            }
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Logger.Log("Showing downloaded apps");
@@ -528,7 +571,7 @@ namespace RIFT_Downgrader
             string sel = "";
             while (!choosen)
             {
-                sel = ConsoleUiController.QuestionString("Which app do you want to " + HeadsetTools.GetHeadsetInstallActionName(config.headset).ToLower() + ": ");
+                sel = ConsoleUiController.QuestionString("Which app do you want to " + actionName + ": ");
                 if (nameApp.ContainsKey(sel.ToLower()))
                 {
                     choosen = true;
@@ -540,6 +583,14 @@ namespace RIFT_Downgrader
             }
             Logger.Log("User selected " + sel);
             App selected = nameApp[sel.ToLower()];
+
+
+            if(!selectVersion)
+            {
+                return new AppReturnVersion(selected, new ReleaseChannelReleaseBinary());
+            }
+
+
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Downloaded versions of " + selected.name);
@@ -564,14 +615,17 @@ namespace RIFT_Downgrader
                 Logger.Log("   - " + displayName);
                 Console.WriteLine(t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year + "     " + displayName);
             }
-            /*
-            if (Directory.Exists(exe + "apps\\" + selected.id + "\\original_install"))
+            foreach(string d in Directory.GetDirectories(exe + "apps\\" + selected.id))
             {
-                versionBinary.Add("original_install", new ReleaseChannelReleaseBinary { id = "original_install" });
-                Logger.Log("   - original_install");
-                Console.WriteLine("UNKNOWN DATE" + "   original_install");
+                string dirName = Path.GetFileName(d);
+                if (dirName.StartsWith("backup") || dirName.StartsWith("original_install"))
+                {
+                    versionBinary.Add(dirName, new ReleaseChannelReleaseBinary { id = dirName });
+                    Logger.Log("   - " + dirName);
+                    Console.WriteLine("UNKNOWN DATE" + "   " + dirName);
+                }
             }
-            */
+            
             choosen = false;
             string ver = "";
             while (!choosen)
@@ -598,9 +652,18 @@ namespace RIFT_Downgrader
             LaunchApp(SelectFromInstalledApps(), openDir);
         }
 
+        public void CreateBackup()
+        {
+            if(config.headset != Headset.RIFT)
+            {
+                Error("Can only create backups of Rift apps");
+                return;
+            }
+            CreateBackup(SelectFromInstalledApps(false, "backup"));
+        }
+
         public void LaunchApp(AppReturnVersion selected, bool openDir = false)
         {
-            
             Console.ForegroundColor = ConsoleColor.White;
             string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
             if (openDir)
@@ -722,9 +785,19 @@ namespace RIFT_Downgrader
                 Good("APK Installed. You should now be able to launch it from your Quest");
                 return;
             }
+
+            // Rift
             Logger.Log("Launching selected version");
             Logger.Log("Loading manifest");
             Console.WriteLine("Loading manifest");
+            if(!File.Exists(baseDirectory + "manifest.json"))
+            {
+                Logger.Log("Manifest does not exists: This may indicate that you tried to launch a backup made with Oculus Downgrader prior to version 1.9.7 which can't be restored automatically.");
+                Error("Manifest does not exist. This may indicate that you tried to launch a backup made with Oculus Downgrader prior to version 1.9.7 which can't be restored automatically.");
+                if (ConsoleUiController.QuestionString("Do you want to open the backups folder instead? (Y/n): ").ToLower() == "n") return;
+                Process.Start("explorer", "/select," + baseDirectory);
+                return;
+            }
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(baseDirectory + "manifest.json"));
             if(!CheckOculusFolder())
             {
@@ -739,7 +812,8 @@ namespace RIFT_Downgrader
             if (File.Exists(appDir + "manifest.json"))
             {
                 Manifest existingManifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(appDir + "manifest.json"));
-                if(existingManifest.versionCode == manifest.versionCode && File.Exists(appDir + manifest.launchFile))
+                string installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
+                if (installedId == selected.version.id && File.Exists(appDir + manifest.launchFile))
                 {
                     Logger.Log("Version is already copied. Launching: " + appDir + manifest.launchFile);
                     Console.WriteLine("Version is already in the library folder. Launching");
@@ -747,7 +821,7 @@ namespace RIFT_Downgrader
                     return;
                 } else if(File.Exists(appDir + "RiftDowngrader_appId.txt"))
                 {
-                    string installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
+                    
                     Logger.Log("Downgraded game already installed. Asking user wether to save the existing install.");
                     string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("You already have a downgraded game version installed. Do you want me to save the files from " + existingManifest.version + " for next time you launch that version? (Y/n): ");
                     if (choice.ToLower() == "y" || choice == "")
@@ -755,6 +829,7 @@ namespace RIFT_Downgrader
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
                         FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\" + installedId, true);
+                        File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\" + installedId + "\\manifest.json", true);
                         Good("Finished\n");
                     }
                     Console.ForegroundColor = ConsoleColor.White;
@@ -769,7 +844,7 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("User wanted to save installed version. Copying");
                     Console.WriteLine("Copying from Oculus to app directory");
-                    FileManager.DirectoryCopy(appDir, exe + "apps\\" + selected.app.id + "\\original_install", true);
+                    CreateBackup(selected);
                 }
             }
             Logger.Log("Copying game");
@@ -782,7 +857,21 @@ namespace RIFT_Downgrader
             File.WriteAllText(appDir + "RiftDowngrader_appId.txt", selected.version.id);
             Good("Finished.\nLaunching");
             Logger.Log("Copying finished. Launching.");
+            Logger.Log(appDir + manifest.launchFile + "   " + baseDirectory);
             Process.Start(new ProcessStartInfo { Arguments = (manifest.launchParameters ?? "") + " " + selected.version.extraLaunchArgs, FileName = appDir + manifest.launchFile, WorkingDirectory = appDir });
+        }
+
+        public void CreateBackup(AppReturnVersion selected)
+        {
+            Logger.Log(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName));
+            Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName)));
+            string appDir = OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName);
+            string backupDirName = "backup_" + DateTime.Now.ToString("dd_MM_yyyy__HH_mm_ss");
+            string backupDir = exe + "apps\\" + selected.app.id + "\\" + backupDirName + "\\";
+            FileManager.DirectoryCopy(appDir, backupDir, true, !auto);
+            File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), backupDir + "manifest.json", true);
+            if(!auto) Good("Created Backup. You can launch it any time to restore.");
+            else Console.WriteLine(backupDirName);
         }
 
         public bool CheckOculusFolder(bool set = false)
