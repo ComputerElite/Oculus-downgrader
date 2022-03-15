@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.9.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.9.8", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -544,7 +544,8 @@ namespace RIFT_Downgrader
 
         public AppReturnVersion SelectFromInstalledApps(bool selectVersion = true, string actionName = "")
         {
-            if(actionName == "")
+            config.AddCanonicalNames();
+            if (actionName == "")
             {
                 actionName = HeadsetTools.GetHeadsetInstallActionName(config.headset).ToLower();
             }
@@ -844,7 +845,7 @@ namespace RIFT_Downgrader
                 {
                     Logger.Log("User wanted to save installed version. Copying");
                     Console.WriteLine("Copying from Oculus to app directory");
-                    CreateBackup(selected);
+                    CreateBackup(selected, manifest.canonicalName);
                 }
             }
             Logger.Log("Copying game");
@@ -863,14 +864,19 @@ namespace RIFT_Downgrader
 
         public void CreateBackup(AppReturnVersion selected)
         {
-            Logger.Log(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName));
-            Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName)));
+            CreateBackup(selected, selected.app.canonicalName);
+        }
+
+        public void CreateBackup(AppReturnVersion selected, string canonicalName)
+        {
+            Logger.Log(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, canonicalName));
+            Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, canonicalName)));
             string appDir = OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName);
             string backupDirName = "backup_" + DateTime.Now.ToString("dd_MM_yyyy__HH_mm_ss");
             string backupDir = exe + "apps\\" + selected.app.id + "\\" + backupDirName + "\\";
             FileManager.DirectoryCopy(appDir, backupDir, true, !auto);
             File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), backupDir + "manifest.json", true);
-            if(!auto) Good("Created Backup. You can launch it any time to restore.");
+            if (!auto) Good("Created Backup. You can launch it any time to restore.");
             else Console.WriteLine(backupDirName);
         }
 
