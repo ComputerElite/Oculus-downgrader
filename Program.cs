@@ -1292,8 +1292,10 @@ namespace RIFT_Downgrader
                 if (choice.ToLower() == "y" || choice == "")
                 {
                     //Console.WriteLine("Guide does not exist atm.");
+                    Console.WriteLine("Open https://computerelite.github.io/tools/Oculus/ObtainToken.html in your browser");
                     Logger.Log("Showing guide");
-                    Process.Start("https://computerelite.github.io/tools/Oculus/ObtainToken.html");
+                    // NET 6 does weird stuff. Can't open a link via Process.Start();
+                    //Process.Start("https://computerelite.github.io/tools/Oculus/ObtainToken.html");
                 }
                 Console.WriteLine();
                 Logger.Log("Asking for access_token");
