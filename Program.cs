@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.0", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.1", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1143,7 +1143,7 @@ namespace RIFT_Downgrader
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = auto ? "y" : ConsoleUiController.QuestionString("Seems like you already have the version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ");
+                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to restart the download? (Y/n): "));
                     if (choice.ToLower() == "n") return;
                     choice = choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
                     string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + selected.id + "\\";
