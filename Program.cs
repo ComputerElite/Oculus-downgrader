@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.1", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -61,6 +61,7 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--headset", "-h" }, false, "Changes and saves the headset. QUEST, GEARVR and RIFT are supported", "Headset", "RIFT"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--mod", "-m" }, true, "Attempts to mod quest games if you launch them and then installs the modded version"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Oculus downgrader will show an Error if you miss an argument");
+            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--userexecuted", "--noquit" }, true, "Makes the application not quit after unsucessful attempts");
 
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "backup", "b" }, true, "Creates a backup of an app"); // Done
@@ -177,7 +178,7 @@ namespace RIFT_Downgrader
                 {
                     Error("Password is invalid. Closing application");
                     Console.ForegroundColor = ConsoleColor.White;
-                    Environment.Exit(1);
+                    Exit(1);
                 }
                 DecryptToken();
             }
@@ -196,7 +197,7 @@ namespace RIFT_Downgrader
                                     // Matching version, launch it you idiot
                                     auto = true;
                                     LaunchApp(new AppReturnVersion(a, b), false);
-                                    Environment.Exit(0);
+                                    Exit(0);
                                 }
                             }
                             foreach (string d in Directory.GetDirectories(exe + "apps\\" + a.id))
@@ -209,7 +210,7 @@ namespace RIFT_Downgrader
                                         // Matching version, launch it you idiot
                                         auto = true;
                                         LaunchApp(new AppReturnVersion(a, new ReleaseChannelReleaseBinary { id = commands.GetValue("--versionid") }), false);
-                                        Environment.Exit(0);
+                                        Exit(0);
                                     }
                                 }
                             }
@@ -221,7 +222,7 @@ namespace RIFT_Downgrader
                 {
                     Error("You have to have --appid/--appname and --versionstring/--versioncode/--versionid to launch an app");
                 }
-                Environment.Exit(1);
+                Exit(1);
             }
             if (commands.HasArgument("backup"))
             {
@@ -235,7 +236,7 @@ namespace RIFT_Downgrader
                             // Matching version, launch it you idiot
                             auto = true;
                             CreateBackup(new AppReturnVersion(a, new ReleaseChannelReleaseBinary()));
-                            Environment.Exit(0);
+                            Exit(0);
                         }
                     }
                     Error("App not found");
@@ -244,7 +245,7 @@ namespace RIFT_Downgrader
                 {
                     Error("You have to have --appid/--appname to launch an app");
                 }
-                Environment.Exit(1);
+                Exit(1);
             }
             if (commands.HasArgument("download"))
             {
@@ -259,12 +260,23 @@ namespace RIFT_Downgrader
                     {
                         StoreSearch(commands.HasArgument("--appname") ? commands.GetValue("--appname") : commands.GetValue("--search"));
                     }
-                    Environment.Exit(0);
+                    Exit(0);
                 } else
                 {
                     Error("You need --appname/--appid/--search and --versionid/--versioncode/--versionstring or --search");
-                    Environment.Exit(1);
+                    Exit(1);
                 }
+            }
+        }
+
+        public void Exit(int code)
+        {
+            if(commands.HasArgument("--noquit"))
+            {
+                auto = false;
+            } else
+            {
+                Environment.Exit(code);
             }
         }
 
@@ -294,7 +306,8 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[8]  Change Headset (currently " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")");
                     Console.WriteLine("[9]  Install Package");
                     Console.WriteLine("[10] Create Backup");
-                    Console.WriteLine("[11] Exit");
+                    Console.WriteLine("[11] Direct download");
+                    Console.WriteLine("[12] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -336,6 +349,10 @@ namespace RIFT_Downgrader
                             CreateBackup();
                             break;
                         case "11":
+                            if (!CheckPassword()) break;
+                            StartWithArgs();
+                            break;
+                        case "12":
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
@@ -349,7 +366,14 @@ namespace RIFT_Downgrader
             }
         }
 
-        // It just works. But it complains that Edge is new and not V 96 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
+        public void StartWithArgs()
+        {
+            string args = ConsoleUiController.QuestionString("Enter the code: ");
+            commands.parsedCommand = new ParsedCommand("-nU --userexecuted " + args).args.ToArray();
+            HandleCLIArgs();
+        }
+
+        // It just works. But it complains that Edge is new and not V 100 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
         public string LoginWithFacebook()
         {
             Logger.Log("Starting login via Facebook");
@@ -357,7 +381,7 @@ namespace RIFT_Downgrader
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/99.0.1150.36/edgedriver_win32.zip", "msedgedriver.zip");
+                d.StartDownload("https://msedgedriver.azureedge.net/100.0.1185.39/edgedriver_win32.zip", "msedgedriver.zip");
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
@@ -650,7 +674,7 @@ namespace RIFT_Downgrader
 
         public void LaunchApp(bool openDir = false)
         {
-            LaunchApp(SelectFromInstalledApps(), openDir);
+            LaunchApp(SelectFromInstalledApps(true, "open"), openDir);
         }
 
         public void CreateBackup()
