@@ -306,7 +306,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[8]  Change Headset (currently " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")");
                     Console.WriteLine("[9]  Install Package");
                     Console.WriteLine("[10] Create Backup");
-                    Console.WriteLine("[11] Direct download");
+                    Console.WriteLine("[11] Direct execute");
                     Console.WriteLine("[12] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
