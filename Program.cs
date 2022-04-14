@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.3", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -368,9 +368,12 @@ namespace RIFT_Downgrader
 
         public void StartWithArgs()
         {
-            string args = ConsoleUiController.QuestionString("Enter the code: ");
-            commands.parsedCommand = new ParsedCommand("-nU --userexecuted " + args).args.ToArray();
-            HandleCLIArgs();
+            string[] args = ConsoleUiController.QuestionString("Enter the code: ").Split('|');
+            foreach(string arg in args)
+            {
+                commands.parsedCommand = new ParsedCommand("-nU --userexecuted " + arg).args.ToArray();
+                HandleCLIArgs();
+            }
         }
 
         // It just works. But it complains that Edge is new and not V 100 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
