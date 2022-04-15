@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.3", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.4", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -179,6 +179,7 @@ namespace RIFT_Downgrader
                     Error("Password is invalid. Closing application");
                     Console.ForegroundColor = ConsoleColor.White;
                     Exit(1);
+                    return;
                 }
                 DecryptToken();
             }
@@ -198,6 +199,7 @@ namespace RIFT_Downgrader
                                     auto = true;
                                     LaunchApp(new AppReturnVersion(a, b), false);
                                     Exit(0);
+                                    return;
                                 }
                             }
                             foreach (string d in Directory.GetDirectories(exe + "apps\\" + a.id))
@@ -211,6 +213,7 @@ namespace RIFT_Downgrader
                                         auto = true;
                                         LaunchApp(new AppReturnVersion(a, new ReleaseChannelReleaseBinary { id = commands.GetValue("--versionid") }), false);
                                         Exit(0);
+                                        return;
                                     }
                                 }
                             }
@@ -223,6 +226,7 @@ namespace RIFT_Downgrader
                     Error("You have to have --appid/--appname and --versionstring/--versioncode/--versionid to launch an app");
                 }
                 Exit(1);
+                return;
             }
             if (commands.HasArgument("backup"))
             {
@@ -237,6 +241,7 @@ namespace RIFT_Downgrader
                             auto = true;
                             CreateBackup(new AppReturnVersion(a, new ReleaseChannelReleaseBinary()));
                             Exit(0);
+                            return;
                         }
                     }
                     Error("App not found");
@@ -246,6 +251,7 @@ namespace RIFT_Downgrader
                     Error("You have to have --appid/--appname to launch an app");
                 }
                 Exit(1);
+                return;
             }
             if (commands.HasArgument("download"))
             {
@@ -261,10 +267,12 @@ namespace RIFT_Downgrader
                         StoreSearch(commands.HasArgument("--appname") ? commands.GetValue("--appname") : commands.GetValue("--search"));
                     }
                     Exit(0);
+                    return;
                 } else
                 {
                     Error("You need --appname/--appid/--search and --versionid/--versioncode/--versionstring or --search");
                     Exit(1);
+                    return;
                 }
             }
         }
