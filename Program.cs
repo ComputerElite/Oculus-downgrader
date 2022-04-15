@@ -39,7 +39,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.4", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.5", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -732,7 +732,7 @@ namespace RIFT_Downgrader
                 }
 
                 Logger.Log("Asking if user wants to mod the APK");
-                if(commands.HasArgument("--mod") || !auto && ConsoleUiController.QuestionString("Do you want to mod the apk before installing it (QuestPatcher is being used)? (y/N): ") == "y")
+                if(commands.HasArgument("--mod") || (!auto || auto && commands.HasArgument("--userexecuted")) && ConsoleUiController.QuestionString("Do you want to mod the apk before installing it (QuestPatcher is being used)? (y/N): ") == "y")
                 {
                     string qPPath = exe + "QuestPatcher.exe";
                     if (!File.Exists(qPPath) || config.qPVersion != qPVersion)
@@ -1178,7 +1178,7 @@ namespace RIFT_Downgrader
                 if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to restart the download? (Y/n): "));
+                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the apk? (Y/n): "));
                     if (choice.ToLower() == "n") return;
                     choice = choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
                     string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + selected.id + "\\";
@@ -1235,7 +1235,6 @@ namespace RIFT_Downgrader
                 Logger.Log("Creating " + baseDirectory);
                 Directory.CreateDirectory(baseDirectory);
                 bool success;
-                GameDownloader.customManifestError = "If you do, check if you got the right headset selected in the main menu. If that's the case update your access_token in case it's expired.";
                 if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
@@ -1278,20 +1277,21 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
             string choice;
+            bool askLaunch = auto && !commands.HasArgument("--userexecuted");
             if (config.headset == Headset.RIFT)
             {
                 Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
-                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n): ");
+                choice = askLaunch ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n): ");
             }
             else if(config.headset == Headset.MONTEREY)
             {
                 Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
-                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
+                choice = askLaunch ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
             }
             else
             {
                 Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your phone.");
-                choice = auto ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
+                choice = askLaunch ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
             }
             if (choice == "n") return;
             LaunchApp(new AppReturnVersion(a, ReleaseChannelReleaseBinary.FromAndroidBinary(binary)));
