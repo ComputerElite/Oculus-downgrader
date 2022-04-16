@@ -29,6 +29,7 @@ using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
+using System.Security.Permissions;
 
 namespace RIFT_Downgrader
 {
@@ -39,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.5", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -502,7 +503,22 @@ namespace RIFT_Downgrader
                     config.headset = Headset.MONTEREY;
                     Console.WriteLine("Set headset to Quest");
                     break;
+                case "monterey":
+                    Logger.Log("Setting headset to Quest");
+                    config.headset = Headset.MONTEREY;
+                    Console.WriteLine("Set headset to Quest");
+                    break;
+                case "hollywood":
+                    Logger.Log("Setting headset to Quest");
+                    config.headset = Headset.MONTEREY;
+                    Console.WriteLine("Set headset to Quest");
+                    break;
                 case "rift":
+                    Logger.Log("Setting headset to Rift");
+                    config.headset = Headset.RIFT;
+                    Console.WriteLine("Set headset to Rift");
+                    break;
+                case "laguna":
                     Logger.Log("Setting headset to Rift");
                     config.headset = Headset.RIFT;
                     Console.WriteLine("Set headset to Rift");
@@ -513,9 +529,14 @@ namespace RIFT_Downgrader
                     Console.WriteLine("Set headset to GearVR");
                     break;
                 case "go":
-                    Logger.Log("Setting headset to Go");
+                    Logger.Log("Setting headset to Pacific");
                     config.headset = Headset.PACIFIC;
-                    Console.WriteLine("Set headset to Pacific");
+                    Console.WriteLine("Set headset to Go");
+                    break;
+                case "pacific":
+                    Logger.Log("Setting headset to Pacific");
+                    config.headset = Headset.PACIFIC;
+                    Console.WriteLine("Set headset to Go");
                     break;
                 default:
                     Console.WriteLine("This headset does not exist. Not setting");
@@ -1180,7 +1201,7 @@ namespace RIFT_Downgrader
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
                     choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the apk? (Y/n): "));
                     if (choice.ToLower() == "n") return;
-                    choice = choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
+                    choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
                     string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + selected.id + "\\";
                     if (choice.ToLower() == "n")
                     {
@@ -1313,7 +1334,7 @@ namespace RIFT_Downgrader
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
-            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus. If logging in didn't work press n? (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? If logging in didn't work press n. (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
             if (choice.ToLower() == "y" || choice == "")
