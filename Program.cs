@@ -515,7 +515,6 @@ namespace RIFT_Downgrader
                     break;
                 case "rift":
                     Logger.Log("Setting headset to Rift");
-                    Logger.Log("Setting headset to Rift");
                     config.headset = Headset.RIFT;
                     Console.WriteLine("Set headset to Rift");
                     break;
