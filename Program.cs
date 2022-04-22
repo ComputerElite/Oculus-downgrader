@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -515,6 +515,7 @@ namespace RIFT_Downgrader
                     break;
                 case "rift":
                     Logger.Log("Setting headset to Rift");
+                    Logger.Log("Setting headset to Rift");
                     config.headset = Headset.RIFT;
                     Console.WriteLine("Set headset to Rift");
                     break;
@@ -869,7 +870,7 @@ namespace RIFT_Downgrader
             if (File.Exists(appDir + "manifest.json"))
             {
                 Manifest existingManifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(appDir + "manifest.json"));
-                string installedId = File.ReadAllText(appDir + "RiftDowngrader_appId.txt");
+                string installedId = File.Exists(appDir + "RiftDowngrader_appId.txt") ? File.ReadAllText(appDir + "RiftDowngrader_appId.txt") : "";
                 if (installedId == selected.version.id && File.Exists(appDir + manifest.launchFile))
                 {
                     Logger.Log("Version is already copied. Launching: " + appDir + manifest.launchFile);
