@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.8", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -419,15 +419,15 @@ namespace RIFT_Downgrader
             Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.White;
-            string oculusUrl = "https://www.oculus.com/";
+            string oculusUrl = "https://www.oculus.com/experiences/quest";
 
             EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions { });
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
             driver.Url = oculusUrl;
-            wait.Until(d => d.Url != oculusUrl);
+            wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
 
             wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-            wait.Until(d => d.Url == "https://www.oculus.com/");
+            wait.Until(d => d.Url.Split('?')[0] == oculusUrl);
             string token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
             driver.Quit();
             Logger.Log("Got Oculus token");
