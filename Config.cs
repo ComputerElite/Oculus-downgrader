@@ -37,9 +37,9 @@ namespace RIFT_Downgrader
                 {
                     foreach(App a in apps)
                     {
-                        if(File.Exists(DowngradeManager.exe + "apps\\" + apps[i].id + "\\" + apps[i].versions[0].id + "\\manifest.json"))
+                        if(File.Exists(DowngradeManager.exe + "apps" + Path.DirectorySeparatorChar + apps[i].id + Path.DirectorySeparatorChar + apps[i].versions[0].id + Path.DirectorySeparatorChar + "manifest.json"))
                         {
-                            apps[i].canonicalName = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.exe + "apps\\" + apps[i].id + "\\" + apps[i].versions[0].id + "\\manifest.json")).canonicalName;
+                            apps[i].canonicalName = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.exe + "apps" + Path.DirectorySeparatorChar + apps[i].id + Path.DirectorySeparatorChar + apps[i].versions[0].id + Path.DirectorySeparatorChar + "manifest.json")).canonicalName;
                             break;
                         }
                     }

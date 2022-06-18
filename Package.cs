@@ -57,7 +57,7 @@ namespace RIFT_Downgrader
 
         public string MakeFilenameSafe(string filename)
         {
-            return filename.Replace("..\\", "");
+            return filename.Replace(".." + Path.DirectorySeparatorChar, "");
         }
 
         public void ExecuteAction(Package package)
@@ -72,9 +72,9 @@ namespace RIFT_Downgrader
                     ReleaseChannelReleaseBinary binary = null;
                     if((binary = app.versions.FirstOrDefault(x => o.versions.Contains(x.version) || o.versionCodes.Contains(x.version_code))) != null) // Check against database
                     {
-                        Manifest m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.config.oculusSoftwareFolder + "\\Manifests\\" + app.canonicalName + ".json"));
+                        Manifest m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(DowngradeManager.config.oculusSoftwareFolder + Path.DirectorySeparatorChar + "Manifests"+ Path.DirectorySeparatorChar + app.canonicalName + ".json"));
                         if(!o.versionCodes.Contains(m.versionCode) && !o.versions.Contains(m.version)) break; // Check installed
-                        string dir = DowngradeManager.config.oculusSoftwareFolder + "\\Software\\" + app.canonicalName + "\\";
+                        string dir = DowngradeManager.config.oculusSoftwareFolder + Path.DirectorySeparatorChar + "Software" + Path.DirectorySeparatorChar + app.canonicalName + Path.DirectorySeparatorChar;
                         MakeFilenamesSafe();
                         switch (GetActionType())
                         {
@@ -123,7 +123,7 @@ namespace RIFT_Downgrader
                                 }
                                 try
                                 {
-                                    if (!directoryDestination.EndsWith("\\") && directoryDestination != "") directoryDestination += "\\";
+                                    if (!directoryDestination.EndsWith(Path.DirectorySeparatorChar) && directoryDestination != "") directoryDestination += Path.DirectorySeparatorChar;
                                     if (!directoryInZip.EndsWith("/")) directoryInZip += "/";
                                     Directory.CreateDirectory(dir + directoryDestination);
 
@@ -131,10 +131,10 @@ namespace RIFT_Downgrader
                                     {
                                         if(f.StartsWith(directoryInZip) && !f.EndsWith("/"))
                                         {
-                                            string dest = dir + directoryDestination + f.Substring(directoryInZip.Length).Replace("/", "\\");
+                                            string dest = dir + directoryDestination + f.Substring(directoryInZip.Length).Replace('/', Path.DirectorySeparatorChar);
                                             Logger.Log("Copying " + f + " to " + dest);
                                             Console.WriteLine("Copying " + f + " to " + dest);
-                                            if (!Directory.Exists(dest.Substring(0, dest.LastIndexOf("\\")))) Directory.CreateDirectory(dest.Substring(0, dest.LastIndexOf("\\")));
+                                            if (!Directory.Exists(dest.Substring(0, dest.LastIndexOf(Path.DirectorySeparatorChar)))) Directory.CreateDirectory(dest.Substring(0, dest.LastIndexOf(Path.DirectorySeparatorChar)));
                                             if(package.DoesFileExist(f)) File.WriteAllBytes(dest, package.GetFile(f));
                                         }
                                     }

@@ -203,7 +203,7 @@ namespace RIFT_Downgrader
                                     return;
                                 }
                             }
-                            foreach (string d in Directory.GetDirectories(exe + "apps\\" + a.id))
+                            foreach (string d in Directory.GetDirectories(exe + "apps" + Path.DirectorySeparatorChar + a.id))
                             {
                                 string dirName = Path.GetFileName(d);
                                 if (dirName.StartsWith("backup") || dirName.StartsWith("original_install"))
@@ -589,7 +589,7 @@ namespace RIFT_Downgrader
 
         public void ValidateVersion(AppReturnVersion selected)
         {
-            string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
+            string baseDirectory = exe + "apps" + Path.DirectorySeparatorChar + selected.app.id + Path.DirectorySeparatorChar + selected.version.id + Path.DirectorySeparatorChar + "";
             if(!Validator.ValidateGameInstall(baseDirectory, baseDirectory + "manifest.json"))
             {
                 string choice = ConsoleUiController.QuestionString("As the game is corrupted or modified, do you want to repair it? (Y/n): ");
@@ -672,7 +672,7 @@ namespace RIFT_Downgrader
                 Logger.Log("   - " + displayName);
                 Console.WriteLine(t.Day.ToString("D2") + "." + t.Month.ToString("D2") + "." + t.Year + "     " + displayName);
             }
-            foreach(string d in Directory.GetDirectories(exe + "apps\\" + selected.id))
+            foreach(string d in Directory.GetDirectories(exe + "apps" + Path.DirectorySeparatorChar + selected.id))
             {
                 string dirName = Path.GetFileName(d);
                 if (dirName.StartsWith("backup") || dirName.StartsWith("original_install"))
@@ -722,7 +722,7 @@ namespace RIFT_Downgrader
         public void LaunchApp(AppReturnVersion selected, bool openDir = false)
         {
             Console.ForegroundColor = ConsoleColor.White;
-            string baseDirectory = exe + "apps\\" + selected.app.id + "\\" + selected.version.id + "\\";
+            string baseDirectory = exe + "apps" + Path.DirectorySeparatorChar + selected.app.id + Path.DirectorySeparatorChar + selected.version.id + Path.DirectorySeparatorChar + "";
             if (openDir)
             {
                 Logger.Log("Only opening directory of install.");
@@ -885,8 +885,8 @@ namespace RIFT_Downgrader
                     {
                         Logger.Log("User wanted to save installed version. Copying");
                         Console.WriteLine("Copying from Oculus to app directory");
-                        FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\" + installedId, true);
-                        File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps\\" + selected.app.id + "\\" + installedId + "\\manifest.json", true);
+                        FileManager.DirectoryCopy(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps" + Path.DirectorySeparatorChar + selected.app.id + Path.DirectorySeparatorChar + installedId, true);
+                        File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), exe + "apps" + Path.DirectorySeparatorChar + selected.app.id + Path.DirectorySeparatorChar + installedId + Path.DirectorySeparatorChar + "manifest.json", true);
                         Good("Finished\n");
                     }
                     Console.ForegroundColor = ConsoleColor.White;
@@ -929,7 +929,7 @@ namespace RIFT_Downgrader
             Manifest manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, canonicalName)));
             string appDir = OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, manifest.canonicalName);
             string backupDirName = "backup_" + DateTime.Now.ToString("dd_MM_yyyy__HH_mm_ss");
-            string backupDir = exe + "apps\\" + selected.app.id + "\\" + backupDirName + "\\";
+            string backupDir = exe + "apps" + Path.DirectorySeparatorChar + selected.app.id + Path.DirectorySeparatorChar + backupDirName + Path.DirectorySeparatorChar + "";
             FileManager.DirectoryCopy(appDir, backupDir, true, !auto);
             File.Copy(OculusFolder.GetManifestPath(config.oculusSoftwareFolder, manifest.canonicalName), backupDir + "manifest.json", true);
             if (!auto) Good("Created Backup. You can launch it any time to restore.");
@@ -945,8 +945,8 @@ namespace RIFT_Downgrader
                 string f = ConsoleUiController.QuestionString("I need to move all the files to your Oculus software folder. " + (set ? "" : "You haven't set it yet. ") + "Please enter it now (default: " + config.oculusSoftwareFolder + "): ");
                 string before = config.oculusSoftwareFolder;
                 config.oculusSoftwareFolder = f == "" ? config.oculusSoftwareFolder : f;
-                if (config.oculusSoftwareFolder.EndsWith("\\")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 1);
-                if (config.oculusSoftwareFolder.EndsWith("\\Software\\Software")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 9);
+                if (config.oculusSoftwareFolder.EndsWith("" + Path.DirectorySeparatorChar + "")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 1);
+                if (config.oculusSoftwareFolder.EndsWith("" + Path.DirectorySeparatorChar + "Software" + Path.DirectorySeparatorChar + "Software")) config.oculusSoftwareFolder = config.oculusSoftwareFolder.Substring(0, config.oculusSoftwareFolder.Length - 9);
                 if(!Directory.Exists(config.oculusSoftwareFolder))
                 {
                     Error("This folder does not exist. Try setting the folder again to a valid folder via the option in the main menu");
@@ -954,14 +954,14 @@ namespace RIFT_Downgrader
                     config.oculusSoftwareFolder = before;
                     return false;
                 }
-                if (!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
+                if (!Directory.Exists(config.oculusSoftwareFolder + Path.DirectorySeparatorChar + "Software"))
                 {
-                    if(config.oculusSoftwareFolder.EndsWith("\\Software"))
+                    if(config.oculusSoftwareFolder.EndsWith("" + Path.DirectorySeparatorChar + "Software"))
                     {
                         config.oculusSoftwareFolder = FileManager.GetParentDirIfExisting(config.oculusSoftwareFolder);
 
                     }
-                    if(!Directory.Exists(config.oculusSoftwareFolder + "\\Software"))
+                    if(!Directory.Exists(config.oculusSoftwareFolder + Path.DirectorySeparatorChar + "Software"))
                     {
                         Error("This folder does not contain a Software directory where your games are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
                         Logger.Log(config.oculusSoftwareFolder + " does not contain Software folder. Falling back to " + before, LoggingType.Warning);
@@ -969,7 +969,7 @@ namespace RIFT_Downgrader
                         return false;
                     }
                 }
-                if (!Directory.Exists(config.oculusSoftwareFolder + "\\Manifests"))
+                if (!Directory.Exists(config.oculusSoftwareFolder + Path.DirectorySeparatorChar + "Manifests"))
                 {
                     Error("This folder does not contain a Manifests directory where your games manifests are stored. Did you set it as Oculus library in the Oculus app? If you did make sure you pasted the right path to the folder.");
                     Logger.Log(config.oculusSoftwareFolder + " does not contain Manifests folder. Falling back to " + before, LoggingType.Warning);
@@ -1196,13 +1196,13 @@ namespace RIFT_Downgrader
             string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
             if (choice.ToLower() == "y" || choice == "")
             {
-                if(Directory.Exists(exe + "apps\\" + appId + "\\" + selected.id))
+                if(Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
                     choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the apk? (Y/n): "));
                     if (choice.ToLower() == "n") return;
                     choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
-                    string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + selected.id + "\\";
+                    string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
                     if (choice.ToLower() == "n")
                     {
                         Logger.Log("Deleting old download");
@@ -1252,7 +1252,7 @@ namespace RIFT_Downgrader
                     Error("Valid access token is needed to proceed. Aborting.");
                     return;
                 }
-                string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps\\" + appId + "\\" + binary.id + "\\";
+                string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + binary.id + Path.DirectorySeparatorChar + "";
                 Logger.Log("Creating " + baseDirectory);
                 Directory.CreateDirectory(baseDirectory);
                 bool success;
