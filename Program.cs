@@ -30,6 +30,7 @@ using ComputerUtils.CommandLine;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using System.Security.Permissions;
+using OculusDB.Database;
 
 namespace RIFT_Downgrader
 {
@@ -163,13 +164,11 @@ namespace RIFT_Downgrader
                 password = "fuck off I don't need a password you idiot";
             }
             cont = commands.HasArgument("--continue");
-            Headset headset = Headset.RIFT;
             bool hasHeadset = false;
             if(commands.HasArgument("--headset"))
             {
                 hasHeadset = true;
                 ChangeHeadsetType(commands.GetValue("--headset"));
-                config.headset = headset;
                 config.Save();
             }
             if (commands.HasArgument("--password"))
@@ -191,7 +190,7 @@ namespace RIFT_Downgrader
                     {
                         if(a.name.ToLower() == commands.GetValue("--appname").ToLower() || a.id == commands.GetValue("--appid"))
                         {
-                            if (hasHeadset && headset != a.headset) continue;
+                            if (hasHeadset && config.headset != a.headset) continue;
                             foreach(ReleaseChannelReleaseBinary b in a.versions)
                             {
                                 if(b.id == commands.GetValue("--versionid") || b.version_code.ToString() == commands.GetValue("--versioncode") || b.version == commands.GetValue("--versionstring"))
@@ -237,7 +236,7 @@ namespace RIFT_Downgrader
                     {
                         if (a.name.ToLower() == commands.GetValue("--appname").ToLower() || a.id == commands.GetValue("--appid"))
                         {
-                            if (hasHeadset && headset != a.headset) continue;
+                            if (hasHeadset && config.headset != a.headset) continue;
                             // Matching version, launch it you idiot
                             auto = true;
                             CreateBackup(new AppReturnVersion(a, new ReleaseChannelReleaseBinary()));
@@ -388,12 +387,13 @@ namespace RIFT_Downgrader
         // It just works. But it complains that Edge is new and not V 100 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
         public string LoginWithFacebook()
         {
+            string msev = "103";
             Logger.Log("Starting login via Facebook");
-            if(!File.Exists(exe + "msedgedriver.exe"))
+            if(!File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/101.0.1210.32/edgedriver_win32.zip", "msedgedriver.zip");
+                d.StartDownload("https://msedgedriver.azureedge.net/103.0.1264.37/edgedriver_win64.zip", "msedgedriver.zip");
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
@@ -401,7 +401,7 @@ namespace RIFT_Downgrader
                 {
                     if(e.Name.EndsWith(".exe"))
                     {
-                        e.ExtractToFile("msedgedriver.exe");
+                        e.ExtractToFile("msedgedriver.exe", true);
                         break;
                     }
                 }
@@ -412,6 +412,7 @@ namespace RIFT_Downgrader
                     Logger.Log("Extract failed");
                     return "";
                 }
+                File.WriteAllText(exe + "msedgedriver_version.txt", msev);
             }
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well. Press any key to open the browser.");
@@ -421,7 +422,7 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
             string oculusUrl = "https://www.oculus.com/experiences/quest";
 
-            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions { });
+            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions {  });
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
             driver.Url = oculusUrl;
             wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
@@ -1099,41 +1100,47 @@ namespace RIFT_Downgrader
             Logger.Log("Fetching versions");
             List<AndroidBinary> versions = new List<AndroidBinary>();
             undefinedEndProgressBar.SetupSpinningWheel(500);
+            Logger.Log("Fetching versions from OculusDB");
+            undefinedEndProgressBar.UpdateProgress("Fetching versions from OculusDB");
+            WebClient webClient = new WebClient();
+            Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
+            ConnectedList s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
+            string appName = s.applications[0].displayName;
+            foreach (DBVersion b in s.versions)
+            {
+                AndroidBinary bin = new AndroidBinary
+                {
+                    id = b.id,
+                    version = b.version,
+                    version_code = b.versionCode,
+                    created_date = b.created_date,
+                    binary_release_channels = new Nodes<ReleaseChannel>()
+                };
+                for (int i = 0; i < b.binary_release_channels.nodes.Count; i++)
+                {
+                    bin.binary_release_channels.nodes.Add(new ReleaseChannel());
+                }
+                versions.Add(bin);
+            }
+            /*
             undefinedEndProgressBar.UpdateProgress("Fetching Versions");
             Data<Application> versionS = GraphQLClient.VersionHistory(appId);
-            string appName = versionS.data.node.display_name;
             foreach (Node<AndroidBinary> v in versionS.data.node.supportedBinaries.edges)
             {
-                versions.Add(v.node);
-            }
-            string ver = "";
-            Logger.Log("Fetching versions from online cache");
-            undefinedEndProgressBar.UpdateProgress("Fetching versions from online cache");
-            WebClient webClient = new WebClient();
-            Logger.Log("Requesting apps in cache from https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json");
-            List<IndexEntry> apps = JsonSerializer.Deserialize<List<IndexEntry>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
-            if(apps.FirstOrDefault(x => x.id == appId) != null)
-            {
-                Logger.Log("Versions for " + appId + " exist online. Requesting them from https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json and adding.");
-                Data<ComputersCacheApplication> s = JsonSerializer.Deserialize<Data<ComputersCacheApplication>>(webClient.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/" + appId + ".json"));
-                foreach (Node<AndroidBinary> b in s.data.node.binaries.edges)
+                bool exists = false;
+                for (int i = 0; i < versions.Count; i++)
                 {
-                    bool exists = false;
-                    for (int i = 0; i < versions.Count; i++)
+                    if (versions[i].id == v.node.id)
                     {
-                        if (versions[i].id == b.node.id)
-                        {
-                            versions[i].created_date = b.node.created_date;
-                            exists = true;
-                        }
+                        versions[i].created_date = v.node.created_date;
+                        exists = true;
                     }
-                    if (!exists) versions.Add(b.node);
                 }
-            } else
-            {
-                Logger.Log("No online entry existing");
-                Console.WriteLine("No online entry existing");
+                if(!exists) versions.Add(v.node);
             }
+            */
+            string ver = "";
+            
             undefinedEndProgressBar.StopSpinningWheel();
             Console.WriteLine("Date is in format DD-MM-YYYY");
             Logger.Log("Versions of " + appName);
@@ -1154,15 +1161,18 @@ namespace RIFT_Downgrader
                 }
                 string displayName = b.version + (exists ? " " + b.version_code : "");
                 versionBinary.Add(displayName, b);
-                DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
-                Logger.Log("   - " + displayName);
-                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName);
                 if (auto && (commands.GetValue("--versionstring") == b.version || commands.GetValue("--versionid") == b.id || commands.GetValue("--versioncode") == b.versionCode.ToString()))
                 {
                     Console.WriteLine("Found version");
                     ver = displayName;
                     break;
                 }
+
+                if (b.binary_release_channels == null || b.binary_release_channels.nodes == null || b.binary_release_channels.nodes.Count <= 0) continue;
+                DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
+                Logger.Log("   - " + displayName);
+                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName);
+                
             }
             bool choosen = false;
             if(ver == "")
