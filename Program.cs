@@ -41,7 +41,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.10", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.11", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1122,23 +1122,6 @@ namespace RIFT_Downgrader
                 }
                 versions.Add(bin);
             }
-            /*
-            undefinedEndProgressBar.UpdateProgress("Fetching Versions");
-            Data<Application> versionS = GraphQLClient.VersionHistory(appId);
-            foreach (Node<AndroidBinary> v in versionS.data.node.supportedBinaries.edges)
-            {
-                bool exists = false;
-                for (int i = 0; i < versions.Count; i++)
-                {
-                    if (versions[i].id == v.node.id)
-                    {
-                        versions[i].created_date = v.node.created_date;
-                        exists = true;
-                    }
-                }
-                if(!exists) versions.Add(v.node);
-            }
-            */
             string ver = "";
             
             undefinedEndProgressBar.StopSpinningWheel();
@@ -1146,21 +1129,19 @@ namespace RIFT_Downgrader
             Logger.Log("Versions of " + appName);
             Console.WriteLine("Versions of " + appName);
             Console.WriteLine();
-            versions = versions.OrderBy(b => b.version_code).ToList<AndroidBinary>();
-            Dictionary<string, AndroidBinary> versionBinary = new Dictionary<string, AndroidBinary>();
+            versions = versions.OrderBy(b => b.version_code).ToList();
             foreach(AndroidBinary b in versions)
             {
                 bool exists = false;
                 foreach (AndroidBinary e in versions)
                 {
-                    if(e.version == b.version && e.version_code != b.version_code)
+                    if(e.version == b.version && e.version_code != b.version_code && e.binary_release_channels != null && e.binary_release_channels.nodes != null && e.binary_release_channels.nodes.Count > 0)
                     {
                         exists = true;
                         break;
                     }
                 }
-                string displayName = b.version + (exists ? " " + b.version_code : "");
-                versionBinary.Add(displayName, b);
+                string displayName = b.version + (exists ? "_" + b.version_code : "");
                 if (auto && (commands.GetValue("--versionstring") == b.version || commands.GetValue("--versionid") == b.id || commands.GetValue("--versioncode") == b.versionCode.ToString()))
                 {
                     Console.WriteLine("Found version");
@@ -1175,7 +1156,8 @@ namespace RIFT_Downgrader
                 
             }
             bool choosen = false;
-            if(ver == "")
+            AndroidBinary selected = new AndroidBinary();
+            if (ver == "")
             {
                 if(!cont && auto)
                 {
@@ -1185,19 +1167,23 @@ namespace RIFT_Downgrader
                 while (!choosen)
                 {
                     ver = ConsoleUiController.QuestionString("Which version do you want?: ");
-                    if (!versionBinary.ContainsKey(ver))
+                    foreach (AndroidBinary v in versions)
+                    {
+                        if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length)) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
+                        {
+                            selected = v;
+                            choosen = true;
+                        }
+                        
+                    }
+                    if (!choosen)
                     {
                         Error("This version does not exist.");
-                    }
-                    else
-                    {
-                        choosen = true;
                     }
                 }
             }
             
             Logger.Log("Selection of user is " + ver);
-            AndroidBinary selected = versionBinary[ver];
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             Console.WriteLine(selected.ToString());
