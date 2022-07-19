@@ -41,7 +41,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.11", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.10.12", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -384,16 +384,16 @@ namespace RIFT_Downgrader
             }
         }
 
-        // It just works. But it complains that Edge is new and not V 100 (=> Downgrade Edge). I hate this shit. Please help me. Why does this have to be so complicated. >:(
+        // It just works
         public string LoginWithFacebook()
         {
-            string msev = "103";
+            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version",  "103.0.1264.37").ToString();
             Logger.Log("Starting login via Facebook");
             if(!File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/103.0.1264.37/edgedriver_win64.zip", "msedgedriver.zip");
+                d.StartDownload("https://msedgedriver.azureedge.net/" + msev + "/edgedriver_win64.zip", "msedgedriver.zip");
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
@@ -428,7 +428,7 @@ namespace RIFT_Downgrader
             wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
 
             wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-            wait.Until(d => d.Url.Split('?')[0] == oculusUrl);
+            wait.Until(d => d.Url.ToLower().StartsWith("https://www.oculus.com"));
             string token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
             driver.Quit();
             Logger.Log("Got Oculus token");
