@@ -389,7 +389,7 @@ namespace RIFT_Downgrader
         {
             string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version",  "103.0.1264.37").ToString();
             Logger.Log("Starting login via Facebook");
-            if(!File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
+            if(!File.Exists("msedgedriver.exe") || !File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
@@ -406,6 +406,7 @@ namespace RIFT_Downgrader
                     }
                 }
                 a.Dispose();
+                File.Delete("msedgedriver.zip");
                 if(!File.Exists("msedgedriver.exe"))
                 {
                     Error("Failed to extract Microsoft edge driver. You can't log in with Facebook");
@@ -415,8 +416,11 @@ namespace RIFT_Downgrader
                 File.WriteAllText(exe + "msedgedriver_version.txt", msev);
             }
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well. Press any key to open the browser.");
+            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well.");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("\n\nPress any key to continue...");
             Console.ReadKey();
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.White;
@@ -426,10 +430,15 @@ namespace RIFT_Downgrader
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
             driver.Url = oculusUrl;
             wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
-
-            wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-            wait.Until(d => d.Url.ToLower().StartsWith("https://www.oculus.com"));
-            string token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
+            string token = "";
+            while (!TokenTools.IsUserTokenValid(token))
+            {
+                Thread.Sleep(1000);
+                wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
+                wait.Until(d => d.Url.ToLower().StartsWith("https://www.oculus.com"));
+                token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
+            }
+            
             driver.Quit();
             Logger.Log("Got Oculus token");
             Console.WriteLine("Logged into Oculus");
