@@ -41,7 +41,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.10.13", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.0", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -292,6 +292,7 @@ namespace RIFT_Downgrader
         {
             Console.WriteLine("Welcome to Oculus downgrader. Navigate the program by typing the number corresponding to your action and hitting enter. You can always cancel an action by closing the program.");
             SetupProgram();
+
             HandleCLIArgs();
             while (true)
             {
@@ -315,7 +316,8 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[9]  Install Package");
                     Console.WriteLine("[10] Create Backup");
                     Console.WriteLine("[11] Direct execute");
-                    Console.WriteLine("[12] Exit");
+                    Console.WriteLine("[12] Open graphical ui");
+                    Console.WriteLine("[13] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -361,6 +363,10 @@ namespace RIFT_Downgrader
                             StartWithArgs();
                             break;
                         case "12":
+                            if (!CheckPassword()) break;
+                            OculusDB();
+                            break;
+                        case "13":
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
@@ -374,6 +380,26 @@ namespace RIFT_Downgrader
             }
         }
 
+        public void OculusDB()
+        {
+            UpdateMSEdge();
+            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions { });
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
+            driver.Url = "https://oculusdb.rui2015.me/search?query=Beat%20Saber&isoculusdowngrader=yesofcitis";
+            string cmd = "";
+            string last = driver.Url;
+            while (cmd == "")
+            {
+                wait = new WebDriverWait(driver, TimeSpan.FromMinutes(10));
+                wait.Until(d => d.PageSource.Contains("--appid"));
+                cmd = driver.PageSource.Substring(driver.PageSource.IndexOf("d --appid"), driver.PageSource.IndexOf("</code>") - driver.PageSource.IndexOf("d --appid"));
+            }
+            driver.Close();
+            Console.WriteLine(cmd);
+            commands.parsedCommand = new ParsedCommand("-nU --userexecuted " + cmd).args.ToArray();
+            HandleCLIArgs();
+        }
+
         public void StartWithArgs()
         {
             string[] args = ConsoleUiController.QuestionString("Enter the code: ").Split('|');
@@ -384,12 +410,11 @@ namespace RIFT_Downgrader
             }
         }
 
-        // It just works
-        public string LoginWithFacebook()
+        public string UpdateMSEdge()
         {
-            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version",  "103.0.1264.37").ToString();
-            Logger.Log("Starting login via Facebook");
-            if(!File.Exists("msedgedriver.exe") || !File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
+            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version", "103.0.1264.37").ToString();
+            Logger.Log("Updating MSEdge");
+            if (!File.Exists("msedgedriver.exe") || !File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
             {
                 Console.WriteLine("Downloading Microsoft edge driver");
                 DownloadProgressUI d = new DownloadProgressUI();
@@ -397,9 +422,9 @@ namespace RIFT_Downgrader
                 Logger.Log("Extracting zip");
                 Console.WriteLine("Extracting package");
                 ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
-                foreach(ZipArchiveEntry e in a.Entries)
+                foreach (ZipArchiveEntry e in a.Entries)
                 {
-                    if(e.Name.EndsWith(".exe"))
+                    if (e.Name.EndsWith(".exe"))
                     {
                         e.ExtractToFile("msedgedriver.exe", true);
                         break;
@@ -407,7 +432,7 @@ namespace RIFT_Downgrader
                 }
                 a.Dispose();
                 File.Delete("msedgedriver.zip");
-                if(!File.Exists("msedgedriver.exe"))
+                if (!File.Exists("msedgedriver.exe"))
                 {
                     Error("Failed to extract Microsoft edge driver. You can't log in with Facebook");
                     Logger.Log("Extract failed");
@@ -415,6 +440,15 @@ namespace RIFT_Downgrader
                 }
                 File.WriteAllText(exe + "msedgedriver_version.txt", msev);
             }
+            return "success";
+        }
+
+        // It just works
+        public string LoginWithFacebook()
+        {
+            string s = UpdateMSEdge();
+            if (s == "") return "";
+            Logger.Log("Starting login via Facebook");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well.");
             Console.ForegroundColor = ConsoleColor.Green;
@@ -849,7 +883,26 @@ namespace RIFT_Downgrader
                     Error("Install failed. See above for more info");
                     return;
                 }
-                Good("APK Installed. You should now be able to launch it from your Quest");
+                Good("APK installed, now copying obbs");
+                if(Directory.Exists(baseDirectory + "obbs"))
+                {
+                    string[] files = Directory.GetFiles(baseDirectory + "obbs");
+                    int done = 0;
+                    ProgressBarUI p = new ProgressBarUI();
+                    UndefinedEndProgressBar u = new UndefinedEndProgressBar();
+                    p.Start();
+                    u.Start();
+                    p.UpdateProgress(done, files.Length);
+                    foreach (string obb in files)
+                    {
+                        u.UpdateProgress("Pushing " + Path.GetFileName(obb));
+                        interactor.Push(obb, "/sdcard/Android/obb/" + packageId + "/" + Path.GetFileName(obb));
+                        done++;
+                        p.UpdateProgress(done, files.Length);
+                    }
+                    u.StopSpinningWheel();
+                }
+                Good("Game Installed. You should now be able to launch it from your Quest");
                 return;
             }
 
@@ -1190,6 +1243,17 @@ namespace RIFT_Downgrader
                         Error("This version does not exist.");
                     }
                 }
+            } else
+            {
+                foreach (AndroidBinary v in versions)
+                {
+                    if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length)) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
+                    {
+                        selected = v;
+                        choosen = true;
+                    }
+
+                }
             }
             
             Logger.Log("Selection of user is " + ver);
@@ -1204,7 +1268,7 @@ namespace RIFT_Downgrader
                 if(Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
                 {
                     Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the apk? (Y/n): "));
+                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the game? (Y/n): "));
                     if (choice.ToLower() == "n") return;
                     choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
                     string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
@@ -1270,6 +1334,22 @@ namespace RIFT_Downgrader
                     Logger.Log("Download failed", LoggingType.Warning);
                     Error("Download failed");
                     return;
+                }
+
+                if(config.headset != Headset.RIFT)
+                {
+                    Good("Apk downloaded, now downloading obbs");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Logger.Log("Requesting obbs from OculusDB");
+                    Console.WriteLine("Requesting OBBs from OculusDB");
+                    WebClient webClient = new WebClient();
+                    DBVersion v = JsonSerializer.Deserialize<DBVersion>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + binary.id));
+                    List<Obb> obbs = new List<Obb>();
+                    foreach(OBBBinary o in v.obbList)
+                    {
+                        obbs.Add(new Obb() { filename = o.file_name, bytes = o.sizeNumerical, id = o.id });
+                    }
+                    GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
                 }
             }
             Console.ForegroundColor = ConsoleColor.White;
