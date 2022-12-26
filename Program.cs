@@ -41,7 +41,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.1", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -412,7 +412,7 @@ namespace RIFT_Downgrader
 
         public string UpdateMSEdge()
         {
-            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version", "103.0.1264.37").ToString();
+            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version", "108.0.1462.54").ToString();
             Logger.Log("Updating MSEdge");
             if (!File.Exists("msedgedriver.exe") || !File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
             {
