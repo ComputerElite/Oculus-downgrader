@@ -41,7 +41,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.2", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.3", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -90,6 +90,7 @@ namespace RIFT_Downgrader
 
         public static void SetupExceptionHandlers()
         {
+            return;
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             HandleExtenption((Exception)e.ExceptionObject);
 
@@ -1194,7 +1195,7 @@ namespace RIFT_Downgrader
             versions = versions.OrderBy(b => b.version_code).ToList();
             foreach(AndroidBinary b in versions)
             {
-                bool exists = false;
+                bool exists = auto;
                 foreach (AndroidBinary e in versions)
                 {
                     if(e.version == b.version && e.version_code != b.version_code && e.binary_release_channels != null && e.binary_release_channels.nodes != null && e.binary_release_channels.nodes.Count > 0)
