@@ -1231,7 +1231,7 @@ namespace RIFT_Downgrader
                     ver = ConsoleUiController.QuestionString("Which version do you want?: ");
                     foreach (AndroidBinary v in versions)
                     {
-                        if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length)) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
+                        if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || (ver.Trim().Length <= v.versionCode.ToString().Length || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length))) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
                         {
                             selected = v;
                             choosen = true;
