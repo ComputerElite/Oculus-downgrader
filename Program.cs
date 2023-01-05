@@ -90,7 +90,6 @@ namespace RIFT_Downgrader
 
         public static void SetupExceptionHandlers()
         {
-            return;
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             HandleExtenption((Exception)e.ExceptionObject);
 
