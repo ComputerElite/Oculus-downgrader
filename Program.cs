@@ -779,6 +779,12 @@ namespace RIFT_Downgrader
                 Logger.Log("Searching downloaded apk in " + baseDirectory);
                 Console.WriteLine("Searching downloaded APK");
                 string apk = "";
+                if(!Directory.Exists(baseDirectory))
+				{
+					Logger.Log("apk directory doesn't exist. Can't install apk");
+					Error("Version is not downloaded. Please download the version");
+                    return;
+                }
                 foreach(string file in Directory.GetFiles(baseDirectory))
                 {
                     if(file.ToLower().EndsWith("apk"))
@@ -792,7 +798,7 @@ namespace RIFT_Downgrader
                 if(apk == "" || new FileInfo(apk).Length < 100)
                 {
                     Logger.Log("No APK found. Can't install APK");
-                    Console.WriteLine("No APK found. Can't install APK. Please try to download it again");
+                    Error("No APK found. Can't install APK. Please try to download it again");
                     return;
                 }
 
@@ -848,6 +854,7 @@ namespace RIFT_Downgrader
                 }
 
                 ADBInteractor interactor = new ADBInteractor();
+                interactor.SelectDevice();
                 Console.WriteLine("Uninstalling old verson.");
                 Logger.Log("uninstalling old version");
 
