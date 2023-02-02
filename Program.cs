@@ -31,6 +31,8 @@ using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using System.Security.Permissions;
 using OculusDB.Database;
+using MongoDB.Libmongocrypt;
+using System.Runtime.ConstrainedExecution;
 
 namespace RIFT_Downgrader
 {
@@ -41,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.5", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -317,7 +319,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[10] Create Backup");
                     Console.WriteLine("[11] Direct execute");
                     Console.WriteLine("[12] Open graphical ui");
-                    Console.WriteLine("[13] Exit");
+					Console.WriteLine("[13] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -370,7 +372,7 @@ namespace RIFT_Downgrader
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
-                    }
+					}
                 } else
                 {
                     Error("Token is needed to continue. Please press any key to exit.");
@@ -1174,8 +1176,17 @@ namespace RIFT_Downgrader
             WebClient webClient = new WebClient();
             Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
             ConnectedList s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
+
             string appName = s.applications[0].displayName;
-            foreach (DBVersion b in s.versions)
+
+			if (auto && commands.GetValue("--versionid") != "")
+			{
+				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
+				Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+                Download(hiddenApp.data.node, appId, appName);
+                return;
+			}
+			foreach (DBVersion b in s.versions)
             {
                 AndroidBinary bin = new AndroidBinary
                 {
@@ -1262,55 +1273,62 @@ namespace RIFT_Downgrader
 
                 }
             }
-            
-            Logger.Log("Selection of user is " + ver);
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine();
-            Console.WriteLine(selected.ToString());
-            Console.WriteLine();
-            Logger.Log("Asking if user wants to download " + selected.ToString());
-            string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
-            if (choice.ToLower() == "y" || choice == "")
-            {
-                if(Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
-                {
-                    Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
-                    choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the game? (Y/n): "));
-                    if (choice.ToLower() == "n") return;
-                    choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
-                    string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
-                    if (choice.ToLower() == "n")
-                    {
-                        Logger.Log("Deleting old download");
-                        Console.WriteLine("Deleting existing versions");
-                        FileManager.RecreateDirectoryIfExisting(baseDirectory);
-                        StartDownload(selected, appId, appName);
-                        return;
-                    } else
-                    {
-                        Console.WriteLine("Validating and repairing version");
-                        
-                        GameDownloader.DownloadManifest(baseDirectory + "manifest.json", DecryptToken(), selected.id);
-                        if(!Validator.RepairGameInstall(baseDirectory, baseDirectory + "manifest.json", DecryptToken(), selected.id))
-                        {
-                            Logger.Log("Repair failed");
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("Failed to repair/download game");
-                            return;
-                        }
-                        StartDownload(selected, appId, appName, true);
-                        return;
-                    }
-                }
-                Console.WriteLine("Starting download");
-                StartDownload(selected, appId, appName);
-            } else
-            {
-                Logger.Log("Downgrading aborted");
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine("Downgrading aborted");
-            }
+
+			Logger.Log("Selection of user is " + ver);
+			Download(selected, appId, appName);
         }
+
+        public void Download(AndroidBinary selected, string appId, string appName)
+        {
+			Console.ForegroundColor = ConsoleColor.White;
+			Console.WriteLine();
+			Console.WriteLine(selected.ToString());
+			Console.WriteLine();
+			Logger.Log("Asking if user wants to download " + selected.ToString());
+			string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
+			if (choice.ToLower() == "y" || choice == "")
+			{
+				if (Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
+				{
+					Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
+					choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the game? (Y/n): "));
+					if (choice.ToLower() == "n") return;
+					choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
+					string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
+					if (choice.ToLower() == "n")
+					{
+						Logger.Log("Deleting old download");
+						Console.WriteLine("Deleting existing versions");
+						FileManager.RecreateDirectoryIfExisting(baseDirectory);
+						StartDownload(selected, appId, appName);
+						return;
+					}
+					else
+					{
+						Console.WriteLine("Validating and repairing version");
+
+						GameDownloader.DownloadManifest(baseDirectory + "manifest.json", DecryptToken(), selected.id);
+						if (!Validator.RepairGameInstall(baseDirectory, baseDirectory + "manifest.json", DecryptToken(), selected.id))
+						{
+							Logger.Log("Repair failed");
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Failed to repair/download game");
+							return;
+						}
+						StartDownload(selected, appId, appName, true);
+						return;
+					}
+				}
+				Console.WriteLine("Starting download");
+				StartDownload(selected, appId, appName);
+			}
+			else
+			{
+				Logger.Log("Downgrading aborted");
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.WriteLine("Downgrading aborted");
+			}
+		}
 
         public string DecryptToken()
         {
