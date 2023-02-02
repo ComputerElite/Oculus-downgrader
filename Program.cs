@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.6", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1183,6 +1183,7 @@ namespace RIFT_Downgrader
 			{
 				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
 				Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+                undefinedEndProgressBar.StopSpinningWheel();
                 Download(hiddenApp.data.node, appId, appName);
                 return;
 			}
@@ -1198,7 +1199,7 @@ namespace RIFT_Downgrader
                 };
                 for (int i = 0; i < b.binary_release_channels.nodes.Count; i++)
                 {
-                    bin.binary_release_channels.nodes.Add(new ReleaseChannel());
+                    bin.binary_release_channels.nodes.Add(new ReleaseChannel { channel_name = b.binary_release_channels.nodes[i].channel_name, id = b.binary_release_channels.nodes[i].id });
                 }
                 versions.Add(bin);
             }
@@ -1286,6 +1287,8 @@ namespace RIFT_Downgrader
 			Console.WriteLine();
 			Logger.Log("Asking if user wants to download " + selected.ToString());
 			string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
+            Logger.Log("Setting selected release channel to " + selected.binary_release_channels.nodes[0].id + " (" + selected.binary_release_channels.nodes[0].channel_name + ")");
+            GraphQLClient.ChangeSelectedReleaseChannel(appId, selected.binary_release_channels.nodes[0].id);
 			if (choice.ToLower() == "y" || choice == "")
 			{
 				if (Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
