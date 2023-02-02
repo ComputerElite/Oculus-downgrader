@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.7", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.8", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -66,8 +66,10 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--mod", "-m" }, true, "Attempts to mod quest games if you launch them and then installs the modded version"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--continue" }, true, "Allow user input if some arguments are missing. If not pressemt Oculus downgrader will show an Error if you miss an argument");
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--userexecuted", "--noquit" }, true, "Makes the application not quit after unsucessful attempts");
+			DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--skipprompts" }, true, "Skips all user prompts");
 
-            DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
+
+			DowngradeManager.commands.AddCommandLineArgument(new List<string> { "launch", "l" }, true, "Launches an app/game if downloaded"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "backup", "b" }, true, "Creates a backup of an app"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appid" }, false, "Appid of game to download/launch", "appid"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--appname" }, false, "Name of game to launch", "name"); // Done
@@ -319,7 +321,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[10] Create Backup");
                     Console.WriteLine("[11] Direct execute");
                     Console.WriteLine("[12] Open graphical ui");
-					Console.WriteLine("[13] Exit");
+					Console.WriteLine("[14] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -368,7 +370,7 @@ namespace RIFT_Downgrader
                             if (!CheckPassword()) break;
                             OculusDB();
                             break;
-                        case "13":
+						case "13":
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
@@ -412,7 +414,7 @@ namespace RIFT_Downgrader
             }
         }
 
-        public string UpdateMSEdge()
+		public string UpdateMSEdge()
         {
             string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version", "108.0.1462.54").ToString();
             Logger.Log("Updating MSEdge");
@@ -1419,6 +1421,7 @@ namespace RIFT_Downgrader
             Logger.Log("Downgrading finished");
             string choice;
             bool askLaunch = auto && !commands.HasArgument("--userexecuted");
+            if (auto && commands.HasArgument("--skipprompts")) askLaunch = true;
             if (config.headset == Headset.RIFT)
             {
                 Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
