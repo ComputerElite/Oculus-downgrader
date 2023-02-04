@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.9", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.10", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1166,13 +1166,21 @@ namespace RIFT_Downgrader
 
         public void ShowVersions(string appId)
         {
-            Logger.Log("Showing versions for " + appId);
+			Logger.Log("Showing versions for " + appId);
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine();
             UndefinedEndProgressBar undefinedEndProgressBar = new UndefinedEndProgressBar();
             undefinedEndProgressBar.Start();
             Logger.Log("Fetching versions");
-            List<AndroidBinary> versions = new List<AndroidBinary>();
+			if (auto && commands.GetValue("--versionid") != "")
+			{
+				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
+				Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+				undefinedEndProgressBar.StopSpinningWheel();
+				Download(hiddenApp.data.node, appId, hiddenApp.data.node.binary_application.displayName);
+				return;
+			}
+			List<AndroidBinary> versions = new List<AndroidBinary>();
             undefinedEndProgressBar.SetupSpinningWheel(500);
             Logger.Log("Fetching versions from OculusDB");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from OculusDB");
@@ -1181,15 +1189,6 @@ namespace RIFT_Downgrader
             ConnectedList s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
 
             string appName = s.applications[0].displayName;
-
-			if (auto && commands.GetValue("--versionid") != "")
-			{
-				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
-				Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
-                undefinedEndProgressBar.StopSpinningWheel();
-                Download(hiddenApp.data.node, appId, appName);
-                return;
-			}
 			foreach (DBVersion b in s.versions)
             {
                 AndroidBinary bin = new AndroidBinary
