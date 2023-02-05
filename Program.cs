@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.14 ", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.15", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1370,32 +1370,36 @@ namespace RIFT_Downgrader
                 {
                     Good("Apk downloaded, now downloading obbs");
                     Console.ForegroundColor = ConsoleColor.White;
-                    Logger.Log("Requesting obbs from OculusDB");
-                    Console.WriteLine("Requesting OBBs from OculusDB");
-                    WebClient webClient = new WebClient();
+                    Logger.Log("Requesting obbs from Oculus");
+                    Console.WriteLine("Requesting OBBs from Oculus");
                     try
                     {
-                        string json = webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + binary.id);
-						DBVersion v = JsonSerializer.Deserialize<DBVersion>(json);
+                        Data<AndroidBinary> b = GraphQLClient.GetBinaryDetails(binary.id);
 						List<Obb> obbs = new List<Obb>();
-						if (v.obbList != null)
+						if (b.data.node.obb_binary != null)
 						{
-							foreach (OBBBinary o in v.obbList)
-							{
-								obbs.Add(new Obb() { filename = o.file_name, bytes = o.sizeNumerical, id = o.id });
-							}
-							GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
+							obbs.Add(new Obb() { filename = b.data.node.obb_binary.file_name, bytes = b.data.node.obb_binary.sizeNumerical, id = b.data.node.obb_binary.id });
 						}
-						else
+                        foreach(AssetFile f in b.data.node.asset_files.nodes)
+                        {
+                            if(f.file_name.EndsWith(".obb"))
+                            {
+								obbs.Add(new Obb() { filename = f.file_name, bytes = f.sizeNumerical, id = f.id });
+							}
+						}
+						if(obbs.Count <= 0)
 						{
-							Logger.Log("OculusDB OBB list is null. Downloading nothing");
+							Logger.Log("OBB is null. Downloading nothing");
 							Console.WriteLine("No obbs to download");
+						} else
+                        {
+							GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
 						}
 					} catch(Exception e)
                     {
                         Logger.Log("Couldn't get obbs: " + e.ToString(), LoggingType.Warning);
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Couldn't get obbs from OculusDB. The version was not found");
+                        Console.WriteLine("Couldn't get obbs from Oculus. Unknown error");
                     }
                     
                 }
