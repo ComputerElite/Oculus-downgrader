@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.16", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.17", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1185,26 +1185,48 @@ namespace RIFT_Downgrader
             Logger.Log("Fetching versions from OculusDB");
             undefinedEndProgressBar.UpdateProgress("Fetching versions from OculusDB");
             WebClient webClient = new WebClient();
-            Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
-            ConnectedList s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
-
-            string appName = s.applications[0].displayName;
-			foreach (DBVersion b in s.versions)
+            string appName = "";
+            ConnectedList s = new();
+            try
             {
-                AndroidBinary bin = new AndroidBinary
+                Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
+                s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
+
+                appName = s.applications[0].displayName;
+                foreach (DBVersion b in s.versions)
                 {
-                    id = b.id,
-                    version = b.version,
-                    version_code = b.versionCode,
-                    created_date = b.created_date,
-                    binary_release_channels = new Nodes<ReleaseChannel>()
-                };
-                for (int i = 0; i < b.binary_release_channels.nodes.Count; i++)
-                {
-                    bin.binary_release_channels.nodes.Add(new ReleaseChannel { channel_name = b.binary_release_channels.nodes[i].channel_name, id = b.binary_release_channels.nodes[i].id });
+                    AndroidBinary bin = new AndroidBinary
+                    {
+                        id = b.id,
+                        version = b.version,
+                        version_code = b.versionCode,
+                        created_date = b.created_date,
+                        binary_release_channels = new Nodes<ReleaseChannel>()
+                    };
+                    for (int i = 0; i < b.binary_release_channels.nodes.Count; i++)
+                    {
+                        bin.binary_release_channels.nodes.Add(new ReleaseChannel { channel_name = b.binary_release_channels.nodes[i].channel_name, id = b.binary_release_channels.nodes[i].id });
+                    }
+                    versions.Add(bin);
                 }
-                versions.Add(bin);
+
+                if (versions.Count <= 0)
+                    throw new Exception("The fuck happened, no versions came back from OculusDB!!!");
             }
+            catch (Exception e)
+            {
+                undefinedEndProgressBar.UpdateProgress("Requesting versions from Oculus");
+                Logger.Log("Error while requesting versions from OculusDB, falling back to Oculus\n\n" + e, LoggingType.Warning);
+                Data<NodesPrimaryBinaryApplication> versionS = GraphQLClient.AllVersionsOfApp(appId);
+                appName = versionS.data.node.display_name;
+                Logger.Log(versionS.data.node.supportedBinaries.edges.Count.ToString());
+                foreach (AndroidBinary v in versionS.data.node.primary_binaries.nodes)
+                {
+                    Logger.Log(v.binary_release_channels.nodes.Count.ToString());
+                    versions.Add(v);
+                }
+            }
+            
             string ver = "";
             
             undefinedEndProgressBar.StopSpinningWheel();
