@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.17", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.18", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1175,9 +1175,32 @@ namespace RIFT_Downgrader
 			if (auto && commands.GetValue("--versionid") != "")
 			{
 				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
-				Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
-				undefinedEndProgressBar.StopSpinningWheel();
-				Download(hiddenApp.data.node, appId, hiddenApp.data.node.binary_application.displayName);
+                try
+                {
+                    Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+                    undefinedEndProgressBar.StopSpinningWheel();
+                    Download(hiddenApp.data.node, appId, hiddenApp.data.node.binary_application.displayName);
+                }
+                catch (Exception e)
+                {
+                    undefinedEndProgressBar.UpdateProgress("Request to Oculus failed. Requesting from OculusDB instead. OculusBB may not have every version...");
+                    Logger.Log("Request to Oculus failed. Requesting from OculusDB instead. OculusBB may not have every version: " + e);
+                    try
+                    {
+                        DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + commands.GetValue("--versionid")));
+                        
+                        undefinedEndProgressBar.StopSpinningWheel();
+                        AndroidBinary b = new AndroidBinary
+                            { version = version.version, versionCode = version.versionCode, id = version.id, change_log = version.changeLog};
+                        Download(b, appId, version.parentApplication.displayName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log("Request to OculusDB failed too. Cannot proceed: " + ex);
+                        Error("Request to OculusDB and Oculus failed. Cannot proceed with download");
+                        return;
+                    }
+                }
 				return;
 			}
 			List<AndroidBinary> versions = new List<AndroidBinary>();
@@ -1311,15 +1334,31 @@ namespace RIFT_Downgrader
 			Console.WriteLine();
 			Logger.Log("Asking if user wants to download " + selected.ToString());
 			string choice = auto ? "y" : ConsoleUiController.QuestionString("Do you want to download this version? (Y/n): ");
-            Logger.Log("Setting selected release channel to " + selected.binary_release_channels.nodes[0].id + " (" + selected.binary_release_channels.nodes[0].channel_name + ")");
-            GraphQLClient.ChangeSelectedReleaseChannel(appId, selected.binary_release_channels.nodes[0].id);
+            if (selected.binary_release_channels != null && selected.binary_release_channels.nodes != null && selected.binary_release_channels.nodes.Count >= 1)
+            {
+                Logger.Log("Setting selected release channel to " + selected.binary_release_channels.nodes[0].id + " (" + selected.binary_release_channels.nodes[0].channel_name + ")");
+                GraphQLClient.ChangeSelectedReleaseChannel(appId, selected.binary_release_channels.nodes[0].id);
+            }
 			if (choice.ToLower() == "y" || choice == "")
 			{
 				if (Directory.Exists(exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id))
 				{
 					Logger.Log("Version is already downloaded. Asking if user wants to download a second time");
 					choice = auto ? "y" : (config.headset == Headset.RIFT ? ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to download it again/resume the download? (Y/n): ") : ConsoleUiController.QuestionString("Seems like you already have version " + selected.version + " (partially) downloaded. Do you want to redownload the game? (Y/n): "));
-					if (choice.ToLower() == "n") return;
+                    if (choice.ToLower() == "n")
+                    {
+                        Logger.Log("Trying to continue with after download stuff as user did not want to download again");
+                        // Get selected app from config
+                        App app = config.apps.FirstOrDefault(x => x.id == appId && x.headset == config.headset);
+                        if (app == null)
+                        {
+                            Logger.Log("Could not find selected app in config");
+                            Error("Could not find selected app in config");
+                            return;
+                        }
+                        AfterDownload(app, selected);
+                        return;
+                    }
 					choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
 					string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
 					if (choice.ToLower() == "n")
@@ -1404,14 +1443,11 @@ namespace RIFT_Downgrader
 						}
                         foreach(AssetFile f in b.data.node.asset_files.nodes)
                         {
-                            if(f.file_name.EndsWith(".obb"))
-                            {
-								obbs.Add(new Obb() { filename = f.file_name, bytes = f.sizeNumerical, id = f.id });
-							}
+                            obbs.Add(new Obb() { filename = f.file_name, bytes = f.sizeNumerical, id = f.id });
 						}
 						if(obbs.Count <= 0)
 						{
-							Logger.Log("OBB is null. Downloading nothing");
+							Logger.Log("OBB List has 0 entries. Downloading nothing");
 							Console.WriteLine("No obbs to download");
 						} else
                         {
@@ -1419,9 +1455,34 @@ namespace RIFT_Downgrader
 						}
 					} catch(Exception e)
                     {
-                        Logger.Log("Couldn't get obbs: " + e.ToString(), LoggingType.Warning);
+                        Logger.Log("Couldn't get obbs. Trying to get from OculusDB next: " + e.ToString(), LoggingType.Warning);
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Couldn't get obbs from Oculus. Unknown error");
+                        Console.WriteLine("Couldn't get obbs from Oculus. Unknown error. Trying with OculusDB now");
+                        try
+                        {
+                            DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + binary.id));
+
+                            if (version.obbList.Count >= 1)
+                            {
+                                List<Obb> obbs = new List<Obb>();
+                                foreach (OBBBinary obbBinary in version.obbList)
+                                {
+                                    obbs.Add(new Obb {filename = obbBinary.file_name, bytes = obbBinary.sizeNumerical, id = obbBinary.id});
+                                }
+                                GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
+                            }
+                            else
+                            {
+                                Logger.Log("OBB List has 0 entries. Downloading nothing");
+                                Console.WriteLine("No obbs to download");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log("Request to OculusDB failed too: " + ex);
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine("Request to OculusDB and Oculus failed. Could not check if obbs are needed.");
+                        }
                     }
                     
                 }
@@ -1454,6 +1515,11 @@ namespace RIFT_Downgrader
                 config.apps.Add(a);
             }
             config.Save();
+            AfterDownload(a, binary);
+        }
+
+        public void AfterDownload(App a, AndroidBinary binary)
+        {
             Console.ForegroundColor = ConsoleColor.Green;
             Logger.Log("Downgrading finished");
             string choice;
