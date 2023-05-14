@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.18", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.19", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -455,7 +455,7 @@ namespace RIFT_Downgrader
             if (s == "") return "";
             Logger.Log("Starting login via Facebook");
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in the browser that will open. After you logged in you are logged in on Oculus Downgrader as well.");
+            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in edge, which will open. After you logged in you are logged in on Oculus Downgrader as well.");
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n\nPress any key to continue...");
             Console.ReadKey();
