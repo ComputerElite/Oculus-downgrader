@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.19", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.20", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -95,16 +95,16 @@ namespace RIFT_Downgrader
         public static void SetupExceptionHandlers()
         {
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-            HandleExtenption((Exception)e.ExceptionObject);
+            HandleException((Exception)e.ExceptionObject);
 
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                HandleExtenption(e.Exception);
+                HandleException(e.Exception);
                 e.SetObserved();
             };
         }
 
-        public static void HandleExtenption(Exception e)
+        public static void HandleException(Exception e)
         {
             Logger.Log("An unhandled exception has occured:\n" + e.ToString(), LoggingType.Crash);
             DowngradeManager.Error("\n\nAn unhandled exception has occured. Check the log for more info and send it to ComputerElite for the (probably) bug to get fixed. Press any key to close out.");
@@ -260,7 +260,7 @@ namespace RIFT_Downgrader
             if (commands.HasArgument("download"))
             {
                 auto = true;
-                if((commands.HasArgument("--appname") || commands.HasArgument("--appid")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid")) || commands.HasArgument("--search") && commands.HasArgument("--"))
+                if((commands.HasArgument("--appname") || commands.HasArgument("--appid")) && (commands.HasArgument("--versionstring") || commands.HasArgument("--versioncode") || commands.HasArgument("--versionid") || commands.HasArgument("--userexecuted")) || commands.HasArgument("--search") && commands.HasArgument("--"))
                 {
                     if(commands.HasArgument("--appid"))
                     {
@@ -321,7 +321,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[10] Create Backup");
                     Console.WriteLine("[11] Direct execute");
                     Console.WriteLine("[12] Open graphical ui");
-					Console.WriteLine("[14] Exit");
+					Console.WriteLine("[13] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -1287,7 +1287,7 @@ namespace RIFT_Downgrader
             AndroidBinary selected = new AndroidBinary();
             if (ver == "")
             {
-                if(!cont && auto)
+                if(!cont && auto && !commands.HasArgument("--userexecuted"))
                 {
                     Error("No version found");
                     Environment.Exit(1);
