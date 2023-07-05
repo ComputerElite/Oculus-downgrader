@@ -43,9 +43,9 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.21", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.22", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
-            Logger.Log("Starting Oculus downgrader version " + DowngradeManager.updater.version);
+            Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
             {
                 Logger.Log("Starting in update mode");
@@ -619,21 +619,70 @@ namespace RIFT_Downgrader
                 return;
             }
             Console.ForegroundColor = ConsoleColor.White;
-            AppReturnVersion selected = SelectFromInstalledApps(true, "validate");
-            Console.WriteLine();
-            string choice = ConsoleUiController.QuestionString("Do you want to validate your current installation (I) or version " + selected.version.version + " you have downloaded (d): ");
-            if(choice.ToLower() == "d")
+            string choice = ConsoleUiController.QuestionString("Do you want to validate a currently installed version (I) or downloaded version (d)?: ");
+            if (choice.ToLower() == "d")
             {
+                AppReturnVersion selected = SelectFromInstalledApps(true, "validate");
+                Console.WriteLine();
                 ValidateVersion(selected);
                 return;
             }
-            config.AddCanonicalNames();
-            if (!Validator.ValidateGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName)))
+            string canonicalName = SelectFromOculusApps("validate");
+            if (canonicalName == null)
+            {
+                Error("Couldn't select app");
+                return;
+            }
+            if (!Validator.ValidateGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder,canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, canonicalName)))
             {
                 choice = ConsoleUiController.QuestionString("As the game is corrupted or modified, do you want to repair it? (Y/n): ");
                 if (choice.ToLower() == "n") return;
-                Validator.RepairGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, selected.app.canonicalName), DecryptToken(), File.ReadAllText(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, selected.app.canonicalName) + "RiftDowngrader_appId.txt"));
+                Validator.RepairGameInstall(OculusFolder.GetSoftwareDirectory(config.oculusSoftwareFolder, canonicalName), OculusFolder.GetManifestPath(config.oculusSoftwareFolder, canonicalName), DecryptToken());
             }
+        }
+
+        public string SelectFromOculusApps(string actionName)
+        {
+            if (!CheckOculusFolder()) return null;
+            if (actionName == "")
+            {
+                actionName = HeadsetTools.GetHeadsetInstallActionName(config.headset).ToLower();
+            }
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine();
+            Logger.Log("Showing installed oculus apps");
+            Console.WriteLine("Installed apps:");
+            Console.WriteLine();
+            Dictionary<string, string> nameApp = new Dictionary<string, string>();
+            foreach (string canonicalName in OculusFolder.GetCanonicalNamesOfInstalledApps(config.oculusSoftwareFolder))
+            {
+                nameApp.Add(canonicalName, canonicalName);
+                Logger.Log("   - " + canonicalName);
+                Console.WriteLine(canonicalName);
+            }
+            Console.WriteLine();
+            bool choosen = false;
+            string sel = "";
+            while (!choosen)
+            {
+                sel = ConsoleUiController.QuestionString("Which app do you want to " + actionName + " ('cancel' to cancel): ");
+                if (nameApp.ContainsKey(sel.ToLower()))
+                {
+                    choosen = true;
+                } else if (sel.ToLower() == "cancel")
+                {
+                    return null;
+                }
+                else
+                {
+                    Error("That app is not installed. Please type the full name displayed above.");
+                }
+            }
+            Logger.Log("User selected " + sel);
+            string selected = nameApp[sel.ToLower()];
+
+
+            return selected;
         }
 
         public void ValidateVersion(AppReturnVersion selected)
