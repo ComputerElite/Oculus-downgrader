@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.24", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.25", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -136,10 +136,10 @@ namespace RIFT_Downgrader
             Console.ForegroundColor = ConsoleColor.White;
         }
 
-        public static void Good(string error)
+        public static void Good(string text)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine(error);
+            Console.WriteLine(text);
             Console.ForegroundColor = ConsoleColor.White;
         }
 
@@ -1020,6 +1020,8 @@ namespace RIFT_Downgrader
             } else if(Directory.Exists(appDir))
             {
                 Logger.Log("Installation not done by Oculus downgrader has been detected. Asking user if they want to save the installation.");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("WARNING: The current install will be overridden. To not lose data, create a backup first.");
                 string choice = auto ? (commands.HasArgument("--copyold") ? "y" : "n") : ConsoleUiController.QuestionString("Do you want to backup your current install? (Y/n): ");
                 if (choice.ToLower() == "y" || choice == "")
                 {
