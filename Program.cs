@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.27", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.28", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -453,9 +453,9 @@ namespace RIFT_Downgrader
         {
             string s = UpdateMSEdge();
             if (s == "") return "";
-            Logger.Log("Starting login via Facebook");
+            Logger.Log("Starting login via Meta");
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Please log into your oculus/facebook account and accept the cookies in edge, which will open. After you logged in you are logged in on Oculus Downgrader as well.");
+            Console.WriteLine("Please log into your Meta account and accept the cookies in Microsoft Edge, which will open. After you logged in, you are logged in with Oculus Downgrader as well.");
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n\nPress any key to continue...");
             Console.ReadKey();
@@ -463,19 +463,19 @@ namespace RIFT_Downgrader
             Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.White;
-            string oculusUrl = "https://www.oculus.com/experiences/quest";
+            string oculusUrl = "https://auth.oculus.com/login/?redirect_uri=https%3A%2F%2Fdeveloper.oculus.com%2Fmanage%2F";
 
             EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions {  });
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
             driver.Url = oculusUrl;
             wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
             string token = "";
-            while (!TokenTools.IsUserTokenValid(token))
+            while (!TokenTools.IsUserTokenValid(token, false))
             {
                 Thread.Sleep(1000);
                 wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-                wait.Until(d => d.Url.ToLower().StartsWith("https://www.oculus.com"));
-                token = driver.PageSource.Substring(driver.PageSource.IndexOf("accessToken"), 200).Split('"')[2];
+                wait.Until(d => d.Url.ToLower().StartsWith("https://developer.oculus.com"));
+                token = driver.Manage().Cookies.GetCookieNamed("oc_ac_at").Value;
             }
             
             driver.Quit();
