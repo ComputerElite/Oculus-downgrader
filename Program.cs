@@ -29,10 +29,7 @@ using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
-using System.Security.Permissions;
 using OculusDB.Database;
-using MongoDB.Libmongocrypt;
-using System.Runtime.ConstrainedExecution;
 
 namespace RIFT_Downgrader
 {
@@ -329,7 +326,7 @@ namespace RIFT_Downgrader
                         case "1":
                             if (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY) continue;
                             if (CheckPassword())
-                                ShowVersions(config.headset == Headset.RIFT ? RiftPolygonNightmareAppId : QuestBSAppId);
+                                ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
                             break;
                         case "2":
                             if (CheckPassword())
