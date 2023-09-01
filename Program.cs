@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.31", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.32", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -309,7 +309,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[1]  Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
                     Console.WriteLine("[2]  Downgrade another " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " app");
                     Console.WriteLine("[3]  " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
-                    Console.WriteLine("[4]  Open app installation directory");
+                    Console.WriteLine("[4]  Open app installation directory (ONLY do if you know what you are doing. If you want to start the app, use option 3)");
                     Console.WriteLine("[5]  Update access_token");
                     Console.WriteLine("[6]  Update oculus folder");
                     Console.WriteLine("[7]  Validate installed app");
