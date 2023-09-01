@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.30", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.31", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1426,6 +1426,36 @@ namespace RIFT_Downgrader
 
         public void StartDownload(AndroidBinary binary, string appId, string appName, bool skipDownload = false)
         {
+            // Save version info so it can be validated later even if the download fails
+            Console.ForegroundColor = ConsoleColor.White;
+            Logger.Log("Adding version to config");
+            Console.WriteLine("Saving version info");
+            bool found = false;
+            for(int aa = 0; aa < config.apps.Count; aa++)
+            {
+                if(config.apps[aa].id == appId)
+                {
+                    found = true;
+                    bool exists = false;
+                    foreach(ReleaseChannelReleaseBinary b in config.apps[aa].versions)
+                    {
+                        if(b.id == binary.id)
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if(!exists) config.apps[aa].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
+                }
+            }
+            App a = new App() { name = appName, id = appId, headset = config.headset};
+            a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
+            if (!found)
+            {
+                config.apps.Add(a);
+            }
+            config.Save();
+            
             if(!skipDownload)
             {
                 Console.ForegroundColor = ConsoleColor.White;
@@ -1439,6 +1469,7 @@ namespace RIFT_Downgrader
                 Logger.Log("Creating " + baseDirectory);
                 Directory.CreateDirectory(baseDirectory);
                 bool success;
+
                 if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
@@ -1510,34 +1541,7 @@ namespace RIFT_Downgrader
                     
                 }
             }
-            Console.ForegroundColor = ConsoleColor.White;
-            Logger.Log("Adding version to config");
-            Console.WriteLine("Saving version info");
-            bool found = false;
-            for(int aa = 0; aa < config.apps.Count; aa++)
-            {
-                if(config.apps[aa].id == appId)
-                {
-                    found = true;
-                    bool exists = false;
-                    foreach(ReleaseChannelReleaseBinary b in config.apps[aa].versions)
-                    {
-                        if(b.id == binary.id)
-                        {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if(!exists) config.apps[aa].versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
-                }
-            }
-            App a = new App() { name = appName, id = appId, headset = config.headset};
-            a.versions.Add(ReleaseChannelReleaseBinary.FromAndroidBinary(binary));
-            if (!found)
-            {
-                config.apps.Add(a);
-            }
-            config.Save();
+            
             AfterDownload(a, binary);
         }
 
