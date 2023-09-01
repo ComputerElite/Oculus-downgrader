@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.28", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.29", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -329,7 +329,7 @@ namespace RIFT_Downgrader
                         case "1":
                             if (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY) continue;
                             if (CheckPassword())
-                                ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
+                                ShowVersions(config.headset == Headset.RIFT ? RiftPolygonNightmareAppId : QuestBSAppId);
                             break;
                         case "2":
                             if (CheckPassword())
@@ -1410,31 +1410,6 @@ namespace RIFT_Downgrader
                         AfterDownload(app, selected);
                         return;
                     }
-					choice = config.headset == Headset.RIFT ? auto ? "y" : ConsoleUiController.QuestionString("Do you want to download a completly fresh copy (n) or repair the existing one (which resumes failed downloads and repair any corrupted files; Y)? (Y/n): ") : "n";
-					string baseDirectory = commands.HasArgument("--destination") ? commands.GetValue("--destination") : exe + "apps" + Path.DirectorySeparatorChar + appId + Path.DirectorySeparatorChar + selected.id + Path.DirectorySeparatorChar + "";
-					if (choice.ToLower() == "n")
-					{
-						Logger.Log("Deleting old download");
-						Console.WriteLine("Deleting existing versions");
-						FileManager.RecreateDirectoryIfExisting(baseDirectory);
-						StartDownload(selected, appId, appName);
-						return;
-					}
-					else
-					{
-						Console.WriteLine("Validating and repairing version");
-
-						GameDownloader.DownloadManifest(baseDirectory + "manifest.json", DecryptToken(), selected.id);
-						if (!Validator.RepairGameInstall(baseDirectory, baseDirectory + "manifest.json", DecryptToken(), selected.id))
-						{
-							Logger.Log("Repair failed");
-							Console.ForegroundColor = ConsoleColor.Red;
-							Console.WriteLine("Failed to repair/download game");
-							return;
-						}
-						StartDownload(selected, appId, appName, true);
-						return;
-					}
 				}
 				Console.WriteLine("Starting download");
 				StartDownload(selected, appId, appName);
@@ -1470,7 +1445,7 @@ namespace RIFT_Downgrader
                 if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
-                else success = GameDownloader.DownloadRiftGame(baseDirectory, DecryptToken(), binary.id);
+                else success = GameDownloader.DownloadRiftGameParallel(baseDirectory, DecryptToken(), binary.id);
                 if (!success)
                 {
                     Logger.Log("Download failed", LoggingType.Warning);
