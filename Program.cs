@@ -123,6 +123,9 @@ namespace RIFT_Downgrader
         public string qPVersion = "2.2.4";
         public string qPDownloadLink = "https://github.com/ComputerElite/QuestPatcherBuilds/releases/download/2.2.4/QuestPatcher.zip";
         public bool first = true;
+        /// <summary>
+        /// Wether cli args are used or not
+        /// </summary>
         public bool auto = false;
         public bool cont = false;
 
@@ -146,6 +149,7 @@ namespace RIFT_Downgrader
             {
                 GraphQLClient.oculusStoreToken = commands.GetValue("--token");
                 Console.WriteLine("Set token to " + GraphQLClient.oculusStoreToken);
+                password = "fuck off I don't need a password you idiot";
                 if(commands.HasArgument("--savetoken") && commands.HasArgument("--password"))
                 {
                     if(commands.GetValue("--password").Length < 8)
@@ -155,6 +159,7 @@ namespace RIFT_Downgrader
                     {
                         if(!SavePasswordAndToken(GraphQLClient.oculusStoreToken, commands.GetValue("--password")))
                         {
+                            password = commands.GetValue("--password");
                             Error("Issue saving password and token");
                         } else
                         {
@@ -162,7 +167,6 @@ namespace RIFT_Downgrader
                         }
                     }
                 }
-                password = "fuck off I don't need a password you idiot";
             }
             cont = commands.HasArgument("--continue");
             bool hasHeadset = false;
@@ -318,7 +322,8 @@ namespace RIFT_Downgrader
                     Console.WriteLine("[10] Create Backup");
                     Console.WriteLine("[11] Direct execute");
                     Console.WriteLine("[12] Open graphical ui");
-					Console.WriteLine("[13] Exit");
+                    Console.WriteLine("[13] Settings");
+					Console.WriteLine("[14] Exit");
                     string choice = ConsoleUiController.QuestionString("Choice: ");
                     Logger.Log("User choose option " + choice);
                     switch (choice)
@@ -367,7 +372,10 @@ namespace RIFT_Downgrader
                             if (!CheckPassword()) break;
                             OculusDB();
                             break;
-						case "13":
+                        case "13":
+                            Settings();
+                            break;
+						case "14":
                             Logger.Log("Exiting");
                             Environment.Exit(0);
                             break;
@@ -379,6 +387,14 @@ namespace RIFT_Downgrader
                     Environment.Exit(0);
                 }
             }
+        }
+
+        public void Settings()
+        {
+            string choice = ConsoleUiController.ShowMenu(new []
+            {
+                "[1] Show developer only versions you got access to (currently" + config.requestVersionsFromOculus + ")",
+            });
         }
 
         public void OculusDB()
@@ -1260,6 +1276,8 @@ namespace RIFT_Downgrader
             ConnectedList s = new();
             try
             {
+                if(config.requestVersionsFromOculus) throw new Exception("Forced request from Oculus");
+                
                 Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
                 s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
 
@@ -1290,10 +1308,8 @@ namespace RIFT_Downgrader
                 Logger.Log("Error while requesting versions from OculusDB, falling back to Oculus\n\n" + e, LoggingType.Warning);
                 Data<NodesPrimaryBinaryApplication> versionS = GraphQLClient.AllVersionsOfApp(appId);
                 appName = versionS.data.node.display_name;
-                Logger.Log(versionS.data.node.supportedBinaries.edges.Count.ToString());
                 foreach (AndroidBinary v in versionS.data.node.primary_binaries.nodes)
                 {
-                    Logger.Log(v.binary_release_channels.nodes.Count.ToString());
                     versions.Add(v);
                 }
             }
@@ -1328,7 +1344,7 @@ namespace RIFT_Downgrader
                 if (b.binary_release_channels == null || b.binary_release_channels.nodes == null || b.binary_release_channels.nodes.Count <= 0) continue;
                 DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
-                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName);
+                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName + "    Release Channels" + String.Join(", ", b.binary_release_channels.nodes.Select(x => x.channel_name)));
                 
             }
             bool choosen = false;
@@ -1351,7 +1367,7 @@ namespace RIFT_Downgrader
                             choosen = true;
                         }
                         
-                    }
+                    }r
                     if (!choosen)
                     {
                         Error("This version does not exist.");
@@ -1587,6 +1603,16 @@ namespace RIFT_Downgrader
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
+            if (auto)
+            {
+                if (!commands.HasArgument("--token"))
+                {
+                    Error("You must specify a token with --token or a password to decrypt a saved token with --password");
+                    return false;
+                }
+
+                return true;
+            }
             string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? If logging in didn't work press n. (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
