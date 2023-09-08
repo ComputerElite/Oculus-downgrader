@@ -395,6 +395,13 @@ namespace RIFT_Downgrader
             {
                 "[1] Show developer only versions you got access to (currently" + config.requestVersionsFromOculus + ")",
             });
+            switch(choice)
+            {
+                case "1":
+                    config.requestVersionsFromOculus = !config.requestVersionsFromOculus;
+                    config.Save();
+                    break;
+            }
         }
 
         public void OculusDB()
@@ -1367,7 +1374,7 @@ namespace RIFT_Downgrader
                             choosen = true;
                         }
                         
-                    }r
+                    }
                     if (!choosen)
                     {
                         Error("This version does not exist.");
