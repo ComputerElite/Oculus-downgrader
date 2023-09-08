@@ -848,7 +848,7 @@ namespace RIFT_Downgrader
                 Process.Start("explorer", "/select," + baseDirectory);
                 return;
             }
-            if (selected.app.headset == Headset.HOLLYWOOD || selected.app.headset == Headset.GEARVR ||selected.app.headset == Headset.PACIFIC)
+            if (selected.app.headset == Headset.HOLLYWOOD || selected.app.headset == Headset.MONTEREY || selected.app.headset == Headset.GEARVR ||selected.app.headset == Headset.PACIFIC)
             {
                 Logger.Log("Searching downloaded apk in " + baseDirectory);
                 Console.WriteLine("Searching downloaded APK");
