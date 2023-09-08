@@ -393,7 +393,7 @@ namespace RIFT_Downgrader
         {
             string choice = ConsoleUiController.ShowMenu(new []
             {
-                "[1] Show developer only versions you got access to (currently" + config.requestVersionsFromOculus + ")",
+                "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
             });
             switch(choice)
             {
@@ -1351,8 +1351,11 @@ namespace RIFT_Downgrader
                 if (b.binary_release_channels == null || b.binary_release_channels.nodes == null || b.binary_release_channels.nodes.Count <= 0) continue;
                 DateTime t = TimeConverter.UnixTimeStampToDateTime(b.created_date);
                 Logger.Log("   - " + displayName);
-                Console.WriteLine((b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName + "    Release Channels" + String.Join(", ", b.binary_release_channels.nodes.Select(x => x.channel_name)));
-                
+                string d = (b.created_date != 0 ? t.ToString("dd.MM.yyyy") : "Date not available") + "     " + displayName;
+                d = d.PadRight(40);
+                d += "Release Channels " + String.Join(", ", b.binary_release_channels.nodes.Select(x => x.channel_name));
+                Console.WriteLine(d);
+
             }
             bool choosen = false;
             AndroidBinary selected = new AndroidBinary();
