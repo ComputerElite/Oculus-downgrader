@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.32", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.33", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -310,7 +310,7 @@ namespace RIFT_Downgrader
                     Console.WriteLine("Check if you got the right headset selected (option 8). Rift for Oculus Link, Air link and Rift/Rift s. Quest for Quest 1 and 2");
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("[1]  Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
+                    Console.WriteLine("[1]  Downgrade Beat Saber" + (config.headset != Headset.RIFT && config.headset != Headset.HOLLYWOOD ? " (Not available on " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + ")" : ""));
                     Console.WriteLine("[2]  Downgrade another " + HeadsetTools.GetHeadsetDisplayNameGeneral(config.headset) + " app");
                     Console.WriteLine("[3]  " + HeadsetTools.GetHeadsetInstallActionName(config.headset) + " App");
                     Console.WriteLine("[4]  Open app installation directory (ONLY do if you know what you are doing. If you want to start the app, use option 3)");
@@ -329,7 +329,7 @@ namespace RIFT_Downgrader
                     switch (choice)
                     {
                         case "1":
-                            if (config.headset != Headset.RIFT && config.headset != Headset.MONTEREY) continue;
+                            if (config.headset != Headset.RIFT && config.headset != Headset.HOLLYWOOD) continue;
                             if (CheckPassword())
                                 ShowVersions(config.headset == Headset.RIFT ? RiftBSAppId : QuestBSAppId);
                             break;
@@ -569,17 +569,17 @@ namespace RIFT_Downgrader
             {
                 case "quest":
                     Logger.Log("Setting headset to Quest");
-                    config.headset = Headset.MONTEREY;
+                    config.headset = Headset.HOLLYWOOD;
                     Console.WriteLine("Set headset to Quest");
                     break;
                 case "monterey":
                     Logger.Log("Setting headset to Quest");
-                    config.headset = Headset.MONTEREY;
+                    config.headset = Headset.HOLLYWOOD;
                     Console.WriteLine("Set headset to Quest");
                     break;
                 case "hollywood":
                     Logger.Log("Setting headset to Quest");
-                    config.headset = Headset.MONTEREY;
+                    config.headset = Headset.HOLLYWOOD;
                     Console.WriteLine("Set headset to Quest");
                     break;
                 case "rift":
@@ -617,7 +617,7 @@ namespace RIFT_Downgrader
         public void ValidateVersionUser()
         {
             
-            if (config.headset == Headset.MONTEREY)
+            if (config.headset == Headset.HOLLYWOOD)
             {
                 Logger.Log("Cannot validate files of Quest app.", LoggingType.Warning);
                 Console.ForegroundColor= ConsoleColor.DarkYellow;
@@ -848,7 +848,7 @@ namespace RIFT_Downgrader
                 Process.Start("explorer", "/select," + baseDirectory);
                 return;
             }
-            if (selected.app.headset == Headset.MONTEREY || selected.app.headset == Headset.GEARVR ||selected.app.headset == Headset.PACIFIC)
+            if (selected.app.headset == Headset.HOLLYWOOD || selected.app.headset == Headset.GEARVR ||selected.app.headset == Headset.PACIFIC)
             {
                 Logger.Log("Searching downloaded apk in " + baseDirectory);
                 Console.WriteLine("Searching downloaded APK");
@@ -1496,7 +1496,7 @@ namespace RIFT_Downgrader
                 Directory.CreateDirectory(baseDirectory);
                 bool success;
 
-                if (config.headset == Headset.MONTEREY) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
+                if (config.headset == Headset.HOLLYWOOD) success = GameDownloader.DownloadMontereyGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.GEARVR) success = GameDownloader.DownloadGearVRGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else if (config.headset == Headset.PACIFIC) success = GameDownloader.DownloadPacificGame(baseDirectory + "app.apk", DecryptToken(), binary.id);
                 else success = GameDownloader.DownloadRiftGameParallel(baseDirectory, DecryptToken(), binary.id);
@@ -1583,7 +1583,7 @@ namespace RIFT_Downgrader
                 Console.WriteLine("Finished. You can now launch the game from the launch app option in the main menu. It is mandatory to launch it from there so the downgraded game gets copied to the Oculus folder and doesn't fail the entitlement checks.");
                 choice = askLaunch ? "n" : ConsoleUiController.QuestionString("Do you want to launch the game now? (Y/n): ");
             }
-            else if(config.headset == Headset.MONTEREY)
+            else if(config.headset == Headset.HOLLYWOOD)
             {
                 Console.WriteLine("Finished. You can now install the game from the install app option in the main menu. This is mandatory so that the game gets installed to your quest.");
                 choice = askLaunch ? "n" : ConsoleUiController.QuestionString("Do you want to install the game now? (Y/n): ");
