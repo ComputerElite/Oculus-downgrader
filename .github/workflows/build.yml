@@ -33,12 +33,8 @@ jobs:
       run: dotnet build --no-restore
     - name: Delete OculusDB.exe
       run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/OculusDB.exe'
-    - name: Delete Oculus Downgrader.exe
-      run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/Oculus Downgrader.exe'
     - name: Delete msedgedriver.exe
       run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/msedgedriver.exe'
-    - name: Copy Oculus Downgrader shortcut
-      run: cp 'RIFT Downgrader/Oculus Downgrader/Oculus Downgrader_Shortcut.exe.lnk' 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/Oculus Downgrader'
     - name: Upload net6.0.zip
       uses: actions/upload-artifact@v3
       with:
