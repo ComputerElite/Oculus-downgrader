@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ComputerUtils\ComputerUtils\ComputerUtils.csproj" />
+    <ProjectReference Include="..\..\OculusDB\ComputerUtils\ComputerUtils\ComputerUtils.csproj" />
     <ProjectReference Include="..\..\OculusDB\OculusDB\OculusDB.csproj" />
-    <ProjectReference Include="..\..\OculusGraphQLApiLib\OculusGraphQLApiLib\OculusGraphQLApiLib.csproj" />
+    <ProjectReference Include="..\..\OculusDB\OculusGraphQLApiLib\OculusGraphQLApiLib\OculusGraphQLApiLib.csproj" />
   </ItemGroup>
 
 </Project>
