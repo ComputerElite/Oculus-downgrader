@@ -31,13 +31,12 @@ jobs:
     - name: Build
       working-directory: 'RIFT Downgrader/Oculus Downgrader'
       run: dotnet build --no-restore
-    - name: Zip build
-      uses: papeloto/action-zip@v1
-      with:
-        files: 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0'
-        dest: net6.0.zip
+    - name: Delete OculusDB.exe
+      run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/OculusDB.exe'
+    - name: Delete msedgedriver.exe
+      run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/msedgedriver.exe'
     - name: Upload net6.0.zip
       uses: actions/upload-artifact@v3
       with:
-        name: net6.0.zip
+        name: net6.0
         path: 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0'
