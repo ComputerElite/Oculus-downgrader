@@ -1,0 +1,47 @@
+name: .NET
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - run: pwd
+    - uses: actions/checkout@v3
+      with:
+        path: 'RIFT Downgrader/Oculus Downgrader'
+    - uses: actions/checkout@v3
+      with:
+        repository: 'ComputerElite/ComputerUtils'
+        path: 'ComputerUtils/'
+    - uses: actions/checkout@v3
+      with:
+        repository: 'ComputerElite/OculusGraphQLApiLib'
+        path: 'OculusGraphQLApiLib'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      working-directory: 'RIFT Downgrader/Oculus Downgrader'
+      run: dotnet restore
+    - name: Build
+      working-directory: 'RIFT Downgrader/Oculus Downgrader'
+      run: dotnet build --no-restore
+    - name: Zip build
+      uses: papeloto/action-zip@v1
+      with:
+        files: 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0'
+        dest: net6.0.zip
+    - name: Upload net6.0.zip
+      uses: actions/upload-artifact@v3
+      with:
+        name: net6.0.zip
+        path: 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0'
