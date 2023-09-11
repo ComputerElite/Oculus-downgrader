@@ -25,6 +25,10 @@ jobs:
       with:
         repository: 'ComputerElite/OculusGraphQLApiLib'
         path: 'OculusGraphQLApiLib'
+    - uses: actions/checkout@v3
+      with:
+        repository: 'ComputerElite/OculusDB'
+        path: 'OculusDB'
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
