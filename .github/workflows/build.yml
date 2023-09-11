@@ -19,14 +19,6 @@ jobs:
         path: 'RIFT Downgrader/Oculus Downgrader'
     - uses: actions/checkout@v3
       with:
-        repository: 'ComputerElite/ComputerUtils'
-        path: 'ComputerUtils/'
-    - uses: actions/checkout@v3
-      with:
-        repository: 'ComputerElite/OculusGraphQLApiLib'
-        path: 'OculusGraphQLApiLib'
-    - uses: actions/checkout@v3
-      with:
         repository: 'ComputerElite/OculusDB'
         path: 'OculusDB'
     - name: Setup .NET
