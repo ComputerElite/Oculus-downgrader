@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.34", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.35", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -495,7 +495,7 @@ namespace RIFT_Downgrader
                 Thread.Sleep(1000);
                 wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
                 wait.Until(d => d.Url.ToLower().StartsWith("https://developer.oculus.com"));
-                token = driver.Manage().Cookies.GetCookieNamed("oc_ac_at").Value;
+                token = driver.Manage().Cookies.GetCookieNamed("oc_www_at").Value;
             }
             
             driver.Quit();
@@ -1623,7 +1623,7 @@ namespace RIFT_Downgrader
 
                 return true;
             }
-            string choice = ConsoleUiController.QuestionString("Do you want to login with facebook/oculus? If logging in didn't work press n. (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to log in with email and password? If logging in didn't work press n. (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
             if (choice.ToLower() == "y" || choice == "")
