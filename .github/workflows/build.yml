@@ -30,7 +30,7 @@ jobs:
     - name: Delete msedgedriver.exe
       run: rm 'Oculus Downgrader/bin/Debug/net6.0/msedgedriver.exe'
     - name: Delete frontend
-      run: rm -r -f 'Oculus Downgrader/bin/Debug/net6.0/frontend'
+      run: rm -r 'Oculus Downgrader/bin/Debug/net6.0/frontend'
     - name: Upload net6.0.zip
       uses: actions/upload-artifact@v3
       with:
