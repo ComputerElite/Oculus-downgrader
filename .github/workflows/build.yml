@@ -16,27 +16,21 @@ jobs:
     - run: pwd
     - uses: actions/checkout@v3
       with:
-        path: 'RIFT Downgrader/Oculus Downgrader'
-    - uses: actions/checkout@v3
-      with:
-        repository: 'ComputerElite/OculusDB'
-        path: 'OculusDB'
+        submodules: recursive
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: 6.0.x
     - name: Restore dependencies
-      working-directory: 'RIFT Downgrader/Oculus Downgrader'
       run: dotnet restore
     - name: Build
-      working-directory: 'RIFT Downgrader/Oculus Downgrader'
       run: dotnet build --no-restore
     - name: Delete OculusDB.exe
-      run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/OculusDB.exe'
+      run: rm 'Oculus Downgrader/bin/Debug/net6.0/OculusDB.exe'
     - name: Delete msedgedriver.exe
-      run: rm 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0/msedgedriver.exe'
+      run: rm 'Oculus Downgrader/bin/Debug/net6.0/msedgedriver.exe'
     - name: Upload net6.0.zip
       uses: actions/upload-artifact@v3
       with:
         name: net6.0
-        path: 'RIFT Downgrader/Oculus Downgrader/bin/Debug/net6.0'
+        path: 'Oculus Downgrader/bin/Debug/net6.0'
