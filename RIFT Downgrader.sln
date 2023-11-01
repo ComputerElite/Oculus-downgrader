@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oculus Downgrader", "Oculus Downgrader\Oculus Downgrader.csproj", "{49A80828-65E9-480D-A1B2-2DFF280A744A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OculusDB", "OculusDB\OculusDB\OculusDB.csproj", "{43B83332-77FE-4917-8418-4397436D9481}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OculusGraphQLApiLib", "OculusDB\OculusGraphQLApiLib\OculusGraphQLApiLib\OculusGraphQLApiLib.csproj", "{F59ED87D-9754-4EBE-8A71-03C4E85EAB9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComputerUtils", "OculusDB\OculusGraphQLApiLib\ComputerUtils\ComputerUtils\ComputerUtils.csproj", "{83A7204B-9200-4D55-8C48-0FE31CE223F6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{49A80828-65E9-480D-A1B2-2DFF280A744A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49A80828-65E9-480D-A1B2-2DFF280A744A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49A80828-65E9-480D-A1B2-2DFF280A744A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49A80828-65E9-480D-A1B2-2DFF280A744A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43B83332-77FE-4917-8418-4397436D9481}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43B83332-77FE-4917-8418-4397436D9481}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43B83332-77FE-4917-8418-4397436D9481}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43B83332-77FE-4917-8418-4397436D9481}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F59ED87D-9754-4EBE-8A71-03C4E85EAB9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F59ED87D-9754-4EBE-8A71-03C4E85EAB9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F59ED87D-9754-4EBE-8A71-03C4E85EAB9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F59ED87D-9754-4EBE-8A71-03C4E85EAB9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83A7204B-9200-4D55-8C48-0FE31CE223F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83A7204B-9200-4D55-8C48-0FE31CE223F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83A7204B-9200-4D55-8C48-0FE31CE223F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83A7204B-9200-4D55-8C48-0FE31CE223F6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AA29C40F-7C53-44DF-B6A9-1574AE96B3FC}
+	EndGlobalSection
+EndGlobal

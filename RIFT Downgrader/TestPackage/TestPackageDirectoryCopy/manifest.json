@@ -1,0 +1,21 @@
+{
+    "packageName": "TestPackageDirectoryCopy",
+    "packageVersion": "1.0.0",
+    "packageAuthor": "ComputerElite",
+    "actions": [
+        {
+            "on": [
+                {
+                    "versions": [
+                        "1.0"
+                    ],
+                    "appId": "1333056616777885"
+                }
+            ],
+            "actionType": "DIRECTORYCOPY",
+            "actionName": "Test Copy",
+            "directoryInZip": "test",
+            "directoryDestination": "test_destination"
+        }
+    ]
+}
