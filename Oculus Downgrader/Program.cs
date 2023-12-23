@@ -40,7 +40,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.37", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.38", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1621,8 +1621,8 @@ namespace RIFT_Downgrader
             else if (onlyIfNeeded) return true;
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
-            
-            string choice = ConsoleUiController.QuestionString("Do you want to log in with email and password? If logging in didn't work press n. (Y/n): ");
+
+            string choice = "n"; //ConsoleUiController.QuestionString("Do you want to log in with email and password? If logging in didn't work press n. (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
             if (choice.ToLower() == "y" || choice == "")
@@ -1636,10 +1636,10 @@ namespace RIFT_Downgrader
                 if (choice.ToLower() == "y" || choice == "")
                 {
                     //Console.WriteLine("Guide does not exist atm.");
-                    Console.WriteLine("Open https://computerelite.github.io/tools/Oculus/ObtainToken.html in your browser");
+                    Console.WriteLine("Open https://computerelite.github.io/tools/Oculus/ObtainTokenNew.html in your browser");
                     Logger.Log("Showing guide");
                     // NET 6 does weird stuff. Can't open a link via Process.Start();
-                    //Process.Start("https://computerelite.github.io/tools/Oculus/ObtainToken.html");
+                    //Process.Start("https://computerelite.github.io/tools/Oculus/ObtainTokenNew.html");
                 }
                 Console.WriteLine();
                 Logger.Log("Asking for access_token");
