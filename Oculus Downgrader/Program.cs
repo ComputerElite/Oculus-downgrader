@@ -1285,7 +1285,7 @@ namespace RIFT_Downgrader
             {
                 if(config.requestVersionsFromOculus) throw new Exception("Forced request from Oculus");
                 
-                Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v2/connected/" + appId + " and adding.");
+                Logger.Log("Requesting versions from https://oculusdb-rewrite.rui2015.me/api/v2/connected/" + appId + " and adding.");
                 s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/connected/" + appId));
 
                 appName = s.applications[0].displayName;
