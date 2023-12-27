@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Net;
 using System.IO.Compression;
+using System.IO.Pipes;
+using System.Net.Sockets;
 using System.Threading;
 using System.Security.Cryptography;
 using ComputerUtils.ADB;
@@ -27,9 +29,14 @@ using OculusGraphQLApiLib;
 using OculusGraphQLApiLib.Results;
 using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
+using OculusDB;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using OculusDB.Database;
+using OculusGraphQLApiLib.GraphQL;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.DevTools;
 
 namespace RIFT_Downgrader
 {
@@ -38,6 +45,7 @@ namespace RIFT_Downgrader
         [STAThread]
         static void Main(string[] args)
         {
+            // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
             DowngradeManager.updater = new Updater("1.11.38", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
@@ -75,6 +83,19 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versionstring" }, false, "VersionString of the game version to download/launch. Less precise than other version selecting", "versionstring"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--copyold" }, true, "If you want to backup your current install"); // Done
 
+            
+            if (args.Length == 1 && args[0].StartsWith("oculus://"))
+            {
+                string path = args[0].Replace("oculus://", "");
+                Console.WriteLine(path);
+                string[] parameters = path.Split('?')[1].Split('&');
+                string token = parameters[0].Split('=')[1];
+                string blob = parameters[1].Split('=')[1];
+                File.WriteAllText(AppDomain.CurrentDomain.BaseDirectory + "etoken_tmp.txt", blob + "|" + token);
+                Console.ReadLine();
+                return;
+            }
+            
             if(DowngradeManager.commands.HasArgument("imconfused"))
             {
                 Console.WriteLine("How DARE you be confused. Get unconfused! https://youtu.be/TMrtLsQbaok?t=188");
@@ -406,8 +427,8 @@ namespace RIFT_Downgrader
 
         public void OculusDB()
         {
-            UpdateMSEdge();
-            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions { });
+            UpdateChrome();
+            ChromeDriver driver = new ChromeDriver(exe + "chrome-win64", new ChromeOptions() { });
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
             driver.Url = "https://oculusdb-rewrite.rui2015.me/search?query=Beat%20Saber&isoculusdowngrader=yesofcitis";
             string cmd = "";
@@ -435,73 +456,70 @@ namespace RIFT_Downgrader
             }
         }
 
-		public string UpdateMSEdge()
+		public void UpdateChrome()
         {
-            string msev = Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Edge\\BLBeacon", "version", "108.0.1462.54").ToString();
-            Logger.Log("Updating MSEdge");
-            if (!File.Exists("msedgedriver.exe") || !File.Exists(exe + "msedgedriver_version.txt") || File.ReadAllText(exe + "msedgedriver_version.txt") != msev)
+            if (File.Exists(exe + "chromeversion.txt"))
             {
-                Console.WriteLine("Downloading Microsoft edge driver");
-                DownloadProgressUI d = new DownloadProgressUI();
-                d.StartDownload("https://msedgedriver.azureedge.net/" + msev + "/edgedriver_win64.zip", "msedgedriver.zip");
-                Logger.Log("Extracting zip");
-                Console.WriteLine("Extracting package");
-                ZipArchive a = ZipFile.OpenRead("msedgedriver.zip");
-                foreach (ZipArchiveEntry e in a.Entries)
-                {
-                    if (e.Name.EndsWith(".exe"))
-                    {
-                        e.ExtractToFile("msedgedriver.exe", true);
-                        break;
-                    }
-                }
-                a.Dispose();
-                File.Delete("msedgedriver.zip");
-                if (!File.Exists("msedgedriver.exe"))
-                {
-                    Error("Failed to extract Microsoft edge driver. You can't log in with Facebook");
-                    Logger.Log("Extract failed");
-                    return "";
-                }
-                File.WriteAllText(exe + "msedgedriver_version.txt", msev);
+                if (File.ReadAllText(exe + "chromeversion.txt") == "120") return;
             }
-            return "success";
+            Logger.Log("Updating Chrome");
+            Console.WriteLine("Downloading Chrome driver");
+            DownloadProgressUI d = new DownloadProgressUI();
+            d.StartDownload("https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.109/win64/chrome-win64.zip", "chrome.zip");
+            Logger.Log("Extracting zip");
+            Console.WriteLine("Extracting package");
+            ZipFile.ExtractToDirectory("chrome.zip", ".");
+            d.StartDownload("https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.109/win64/chromedriver-win64.zip", "driver.zip");
+            ZipArchive a = ZipFile.OpenRead("driver.zip");
+            foreach (ZipArchiveEntry e in a.Entries)
+            {
+                if (e.Name.EndsWith(".exe"))
+                {
+                    e.ExtractToFile("chrome-win64" + Path.DirectorySeparatorChar + "chromedriver.exe", true);
+                    break;
+                }
+            }
+            a.Dispose();
+            File.WriteAllText(exe + "chromeversion.txt", "120");
         }
 
         // It just works
         public string LoginWithFacebook()
         {
-            string s = UpdateMSEdge();
-            if (s == "") return "";
-            Logger.Log("Starting login via Meta");
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Please log into your Meta account and accept the cookies in Microsoft Edge, which will open. After you logged in, you are logged in with Oculus Downgrader as well.");
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n\nPress any key to continue...");
-            Console.ReadKey();
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("You have 5 minutes to log in. After that the login window will be closed");
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.White;
-            string oculusUrl = "https://auth.oculus.com/login/?redirect_uri=https%3A%2F%2Fdeveloper.oculus.com%2Fmanage%2F";
+            UpdateChrome();
+            LoginClient client = new LoginClient();
+            LoginResponse url = client.StartLogin();
 
-            EdgeDriver driver = new EdgeDriver(exe, new EdgeOptions {  });
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
-            driver.Url = oculusUrl;
-            wait.Until(d => d.Url.Split('?')[0] != oculusUrl);
-            string token = "";
-            while (!TokenTools.IsUserTokenValid(token, false))
+
+            // Set up Selenium WebDriver with BrowserMob Proxy
+            var options = new ChromeOptions();
+            options.AddArgument("--remote-debugging-port=9222");
+            // Create WebDriver instance
+            IWebDriver driver = new ChromeDriver(exe + "chrome-win64", options);
+
+            // Register a request filter to handle custom URI protocol
+            driver.Navigate().GoToUrl(url.url);
+            Console.WriteLine(driver.Url);
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(10));
+            INetwork network = driver.Manage().Network;
+            network.StartMonitoring();
+            string at = "";
+            network.NetworkResponseReceived += (sender, e) =>
             {
-                Thread.Sleep(1000);
-                wait = new WebDriverWait(driver, TimeSpan.FromMinutes(5));
-                wait.Until(d => d.Url.ToLower().StartsWith("https://developer.oculus.com"));
-                token = driver.Manage().Cookies.GetCookieNamed("oc_www_at").Value;
+                if (e.ResponseUrl.Contains("approve"))
+                {
+                    string json = e.ResponseBody.Replace("for (;;);", "").Replace("\\/", "/");
+                    Console.WriteLine(json);
+                    LoginApproveResponse response = JsonSerializer.Deserialize<LoginApproveResponse>(json);
+                    at = client.UriCallback(response);
+                }
+            };
+            while (at == "")
+            {
+                Thread.Sleep(5000);
             }
-            
-            driver.Quit();
-            Logger.Log("Got Oculus token");
-            Console.WriteLine("Logged into Oculus");
-            return token;
+
+            return at;
         }
 
         public void InstallPackage()
@@ -1622,7 +1640,7 @@ namespace RIFT_Downgrader
             if (onlyIfNeeded) Console.WriteLine("Your access_token is needed to authenticate downloads.");
             Logger.Log("Asking user if they want to use the new selenium sign in method.");
 
-            string choice = "n"; //ConsoleUiController.QuestionString("Do you want to log in with email and password? If logging in didn't work press n. (Y/n): ");
+            string choice = ConsoleUiController.QuestionString("Do you want to log in with email and password? If logging in didn't work press n. (Y/n): ");
             Console.ForegroundColor = ConsoleColor.White;
             string at;
             if (choice.ToLower() == "y" || choice == "")
