@@ -510,6 +510,7 @@ namespace RIFT_Downgrader
                 {
                     string json = e.ResponseBody.Replace("for (;;);", "").Replace("\\/", "/");
                     Console.WriteLine(json);
+                    driver.Close();
                     LoginApproveResponse response = JsonSerializer.Deserialize<LoginApproveResponse>(json);
                     at = client.UriCallback(response);
                 }
