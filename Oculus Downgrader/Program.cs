@@ -500,7 +500,6 @@ namespace RIFT_Downgrader
             // Register a request filter to handle custom URI protocol
             driver.Navigate().GoToUrl(url.url);
             Console.WriteLine(driver.Url);
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(10));
             INetwork network = driver.Manage().Network;
             network.StartMonitoring();
             string at = "";
@@ -520,7 +519,7 @@ namespace RIFT_Downgrader
             };
             while (at == "")
             {
-                Thread.Sleep(5000);
+                Thread.Sleep(1000);
             }
 
             return at;
