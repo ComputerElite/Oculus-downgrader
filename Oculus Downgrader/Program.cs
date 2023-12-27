@@ -504,10 +504,13 @@ namespace RIFT_Downgrader
             INetwork network = driver.Manage().Network;
             network.StartMonitoring();
             string at = "";
+            bool loggingIn = false;
             network.NetworkResponseReceived += (sender, e) =>
             {
                 if (e.ResponseUrl.Contains("approve"))
                 {
+                    if (loggingIn) return;
+                    loggingIn = true;
                     string json = e.ResponseBody.Replace("for (;;);", "").Replace("\\/", "/");
                     Console.WriteLine(json);
                     driver.Close();
