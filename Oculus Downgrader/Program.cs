@@ -415,7 +415,7 @@ namespace RIFT_Downgrader
             string choice = ConsoleUiController.ShowMenu(new []
             {
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
-                "Show Oculus token(Do not share)"
+                "Show Oculus token (Do not share)"
                 
             });
             switch(choice)
