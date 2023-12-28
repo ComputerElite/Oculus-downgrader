@@ -48,7 +48,7 @@ namespace RIFT_Downgrader
             // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.39", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.40", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -415,12 +415,22 @@ namespace RIFT_Downgrader
             string choice = ConsoleUiController.ShowMenu(new []
             {
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
+                "Show Oculus token(Do not share)"
+                
             });
             switch(choice)
             {
                 case "1":
                     config.requestVersionsFromOculus = !config.requestVersionsFromOculus;
                     config.Save();
+                    break;
+                case "2":
+                    if (!CheckPassword())
+                    {
+                        Error("You need to enter your password to see your token");
+                        break;
+                    }
+                    Console.WriteLine("Your token is: " + DecryptToken());
                     break;
             }
         }
