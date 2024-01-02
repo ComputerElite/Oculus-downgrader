@@ -49,7 +49,7 @@ namespace RIFT_Downgrader
             // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.42", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.43", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -416,7 +416,8 @@ namespace RIFT_Downgrader
             string choice = ConsoleUiController.ShowMenu(new []
             {
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
-                "Show Oculus token (Do not share)"
+                "Show Oculus token (Do not share)",
+                "Export token to OculusDB"
                 
             });
             switch(choice)
@@ -432,6 +433,21 @@ namespace RIFT_Downgrader
                         break;
                     }
                     Console.WriteLine("Your token is: " + DecryptToken());
+                    break;
+                case "3":
+                    if (!CheckPassword())
+                    {
+                        Error("You need to enter your password to see your token");
+                        break;
+                    }
+
+                    string url = "https://oculusdb.rui2015.me/utils?token=" + DecryptToken();
+                    ProcessStartInfo info = new ProcessStartInfo
+                    {
+                        UseShellExecute = true,
+                        FileName = url
+                    };
+                    Process.Start(info);
                     break;
             }
         }
