@@ -417,7 +417,7 @@ namespace RIFT_Downgrader
             {
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
                 "Show Oculus token (Do not share)",
-                "Export token to OculusDB"
+                "Export token to OculusDB (this will submit your token to OculusDB's server but it won't get stored. Alternatively save it yourself at the utils page. This will not send it to the server)"
                 
             });
             switch(choice)
