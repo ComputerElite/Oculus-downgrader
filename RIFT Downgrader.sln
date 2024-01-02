@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComputerUtils", "OculusDB\O
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OculusDB", "OculusDB\OculusDB\OculusDB.csproj", "{61402A2A-1379-4355-BD8C-883A3E455865}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OculusGraphQLApiLibCLI", "OculusDB\OculusGraphQLApiLib\OculusGraphQLApiLibCLI\OculusGraphQLApiLibCLI.csproj", "{A1A3F9DE-B33F-4862-B1E5-2497BA93D60B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{61402A2A-1379-4355-BD8C-883A3E455865}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61402A2A-1379-4355-BD8C-883A3E455865}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61402A2A-1379-4355-BD8C-883A3E455865}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1A3F9DE-B33F-4862-B1E5-2497BA93D60B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1A3F9DE-B33F-4862-B1E5-2497BA93D60B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1A3F9DE-B33F-4862-B1E5-2497BA93D60B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1A3F9DE-B33F-4862-B1E5-2497BA93D60B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
