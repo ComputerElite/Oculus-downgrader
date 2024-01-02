@@ -33,6 +33,7 @@ using OculusDB;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using OculusDB.Database;
+using OculusDB.Search;
 using OculusGraphQLApiLib.GraphQL;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -1169,38 +1170,74 @@ namespace RIFT_Downgrader
             string term = auto ? autoterm : ConsoleUiController.QuestionString("Search term: ");
             Logger.Log("User entered " + term);
             Console.ForegroundColor = ConsoleColor.White;
-            Logger.Log("Requesting results");
-            Console.WriteLine("Requesting results");
-            ViewerData<ContextualSearch> s = GraphQLClient.StoreSearch(term, config.headset);
+            
+            Dictionary<string, string> nameIdRaw = new Dictionary<string, string>();
+            Dictionary<string, string> nameId = new Dictionary<string, string>();
+            
+            Logger.Log("Requesting results from Oculus");
+            Console.WriteLine("Requesting results from Oculus");
+            try
+            {
+                ViewerData<ContextualSearch> s = GraphQLClient.StoreSearch(term, config.headset);
+                Console.WriteLine();
+                foreach (CategorySearchResult c in s.data.viewer.contextual_search.all_category_results)
+                {
+                    if (c.name == "APPS" || c.name == "CONCEPT")
+                    {
+                        foreach (TargetObject<EdgesPrimaryBinaryApplication> r in c.search_results.nodes)
+                        {
+                            if (!nameIdRaw.ContainsKey(r.target_object.id))
+                                nameIdRaw.Add(r.target_object.id, r.target_object.display_name);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Error("Couldn't get results from Oculus");
+                Logger.Log("Couldn't get results from Oculus: " + e);
+            }
+
+            try
+            {
+                
+                Logger.Log("Requesting results from OculusDB");
+                Console.WriteLine("Requesting results from OculusDB");
+                SearchResultWithType<DBApplication> applications = JsonSerializer.Deserialize<SearchResultWithType<DBApplication>>(
+                    new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/search?q=" + term));
+                foreach (DBApplication application in applications.results)
+                {
+                    if (!nameIdRaw.ContainsKey(application.id))
+                        nameIdRaw.Add(application.id, application.displayName);
+                }
+
+            } catch(Exception e)
+            {
+                Error("Couldn't get results from OculusDB");
+                Logger.Log("Couldn't get results from OculusDB: " + e);
+            }
             Console.WriteLine();
             Logger.Log("Results: ");
             Console.WriteLine("Results: ");
-            Console.WriteLine();
-            Dictionary<string, string> nameId = new Dictionary<string, string>();
-            foreach (CategorySearchResult c in s.data.viewer.contextual_search.all_category_results)
+
+
+            foreach (KeyValuePair<string,string> pair in nameIdRaw)
             {
-                if (c.name == "APPS" || c.name == "CONCEPT")
+                int increment = 0;
+                while (nameId.ContainsKey(pair.Value + (increment == 0 ? "" : " " + increment)))
                 {
-                    foreach (TargetObject<EdgesPrimaryBinaryApplication> r in c.search_results.nodes)
-                    {
-                        int increment = 0;
-                        while (nameId.ContainsKey(r.target_object.display_name + (increment == 0 ? "" : " " + increment)))
-                        {
-                            increment++;
-                        }
-                        string name = r.target_object.display_name + (increment == 0 ? "" : " " + increment);
-                        nameId.Add(name.ToLower(), r.target_object.id);
-                        Logger.Log("   - " + name);
-                        Console.WriteLine("   - " + name);
-                        if (name.ToLower() == term.ToLower())
-                        {
-                            Logger.Log("Result is exact match. Auto selecting");
-                            Console.WriteLine("Result is exact match. Auto selecting");
-                            ShowVersions(r.target_object.id);
-                            return;
-                        }
-                        
-                    }
+                    increment++;
+                }
+                string name = pair.Value + (increment == 0 ? "" : " " + increment);
+                nameId.Add(name.ToLower(), pair.Key);
+                Logger.Log("   - " + name);
+                Console.WriteLine("   - " + name);
+                if (name.ToLower() == term.ToLower())
+                {
+                    Logger.Log("Result is exact match. Auto selecting");
+                    Console.WriteLine("Result is exact match. Auto selecting");
+                    ShowVersions(pair.Key);
+                    return;
                 }
             }
             Logger.Log("Requesting cache results");
