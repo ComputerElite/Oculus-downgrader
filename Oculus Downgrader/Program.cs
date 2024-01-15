@@ -49,7 +49,7 @@ namespace RIFT_Downgrader
             // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.43", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.44", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1240,12 +1240,13 @@ namespace RIFT_Downgrader
             foreach (KeyValuePair<string,string> pair in nameIdRaw)
             {
                 int increment = 0;
-                while (nameId.ContainsKey(pair.Value + (increment == 0 ? "" : " " + increment)))
+                string name;
+                while (nameId.ContainsKey(name = (pair.Value + (increment == 0 ? "" : " " + increment)).ToLower()))
                 {
                     increment++;
                 }
-                string name = pair.Value + (increment == 0 ? "" : " " + increment);
-                nameId.Add(name.ToLower(), pair.Key);
+                
+                nameId.Add(name, pair.Key);
                 Logger.Log("   - " + name);
                 Console.WriteLine("   - " + name);
                 if (name.ToLower() == term.ToLower())
