@@ -49,7 +49,7 @@ namespace RIFT_Downgrader
             // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.44", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.45", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1189,6 +1189,7 @@ namespace RIFT_Downgrader
             
             Dictionary<string, string> nameIdRaw = new Dictionary<string, string>();
             Dictionary<string, string> nameId = new Dictionary<string, string>();
+            int failed = 0;
             
             Logger.Log("Requesting results from Oculus");
             Console.WriteLine("Requesting results from Oculus");
@@ -1212,6 +1213,7 @@ namespace RIFT_Downgrader
             {
                 Error("Couldn't get results from Oculus");
                 Logger.Log("Couldn't get results from Oculus: " + e);
+                failed += 1;
             }
 
             try
@@ -1231,12 +1233,42 @@ namespace RIFT_Downgrader
             {
                 Error("Couldn't get results from OculusDB");
                 Logger.Log("Couldn't get results from OculusDB: " + e);
+                failed += 1;
             }
+
+            if (failed >= 2)
+            {
+                Logger.Log("Requesting cache results");
+                WebClient client = new WebClient();
+                client.Headers.Add("user-agent", updater.AppName + "/" + updater.version);
+                List<IndexEntry> apps = JsonSerializer.Deserialize<List<IndexEntry>>(client.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
+                foreach(IndexEntry e in apps)
+                {
+                    if (!e.name.ToLower().Contains(term.ToLower())) continue;
+                    if (Enum.GetName(typeof(Headset), config.headset) != e.headset) continue;
+                    if (nameId.ContainsKey(e.name) && nameId[e.name] == e.id) continue;
+                    int increment = 0;
+                    while (nameId.ContainsKey(e.name.ToLower() + (increment == 0 ? "" : " " + increment)))
+                    {
+                        increment++;
+                    }
+                    string name = e.name + (increment == 0 ? "" : " " + increment);
+                    Logger.Log("   - " + name);
+                    Console.WriteLine("   - " + name);
+                    if (name.ToLower() == term.ToLower())
+                    {
+                        Logger.Log("Result is exact match. Auto selecting");
+                        Console.WriteLine("Result is exact match. Auto selecting");
+                        ShowVersions(e.id);
+                        return;
+                    }
+                    nameId.Add(name.ToLower(), e.id);
+                }
+            }
+
             Console.WriteLine();
             Logger.Log("Results: ");
             Console.WriteLine("Results: ");
-
-
             foreach (KeyValuePair<string,string> pair in nameIdRaw)
             {
                 int increment = 0;
@@ -1257,32 +1289,7 @@ namespace RIFT_Downgrader
                     return;
                 }
             }
-            Logger.Log("Requesting cache results");
-            WebClient client = new WebClient();
-            client.Headers.Add("user-agent", updater.AppName + "/" + updater.version);
-            List<IndexEntry> apps = JsonSerializer.Deserialize<List<IndexEntry>>(client.DownloadString("https://computerelite.github.io/tools/Oculus/OlderAppVersions/index.json"));
-            foreach(IndexEntry e in apps)
-            {
-                if (!e.name.ToLower().Contains(term.ToLower())) continue;
-                if (Enum.GetName(typeof(Headset), config.headset) != e.headset) continue;
-                if (nameId.ContainsKey(e.name) && nameId[e.name] == e.id) continue;
-                int increment = 0;
-                while (nameId.ContainsKey(e.name.ToLower() + (increment == 0 ? "" : " " + increment)))
-                {
-                    increment++;
-                }
-                string name = e.name + (increment == 0 ? "" : " " + increment);
-                Logger.Log("   - " + name);
-                Console.WriteLine("   - " + name);
-                if (name.ToLower() == term.ToLower())
-                {
-                    Logger.Log("Result is exact match. Auto selecting");
-                    Console.WriteLine("Result is exact match. Auto selecting");
-                    ShowVersions(e.id);
-                    return;
-                }
-                nameId.Add(name.ToLower(), e.id);
-            }
+            
             Console.WriteLine();
             bool choosen = false;
             string sel = "";
