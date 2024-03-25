@@ -1694,7 +1694,7 @@ namespace RIFT_Downgrader
             Logger.Log("Updating access_token");
             if (auto)
             {
-                if (!commands.HasArgument("--token"))
+                if (!commands.HasArgument("--token") && password == "")
                 {
                     Error("You must specify a token with --token or a password to decrypt a saved token with --password");
                     return false;
