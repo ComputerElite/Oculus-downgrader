@@ -30,6 +30,9 @@ using ComputerUtils.CommandLine;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using OculusDB.Database;
+using OculusGraphQLApiLib.GraphQL;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 
 namespace RIFT_Downgrader
 {
@@ -1199,9 +1202,9 @@ namespace RIFT_Downgrader
                 
                 Logger.Log("Requesting results from OculusDB");
                 Console.WriteLine("Requesting results from OculusDB");
-                SearchResultWithType<DBApplication> applications = JsonSerializer.Deserialize<SearchResultWithType<DBApplication>>(
-                    new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/search?q=" + term));
-                foreach (DBApplication application in applications.results)
+                List<DBApplication> applications = JsonSerializer.Deserialize<List<DBApplication>>(
+                    new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/search/" + term));
+                foreach (DBApplication application in applications)
                 {
                     if (!nameIdRaw.ContainsKey(application.id))
                         nameIdRaw.Add(application.id, application.displayName);
@@ -1318,7 +1321,7 @@ namespace RIFT_Downgrader
 				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
                 try
                 {
-                    Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+                    Data<OculusBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
                     undefinedEndProgressBar.StopSpinningWheel();
                     Download(hiddenApp.data.node, appId, hiddenApp.data.node.binary_application.displayName);
                 }
@@ -1331,7 +1334,7 @@ namespace RIFT_Downgrader
                         DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + commands.GetValue("--versionid")));
                         
                         undefinedEndProgressBar.StopSpinningWheel();
-                        AndroidBinary b = new AndroidBinary
+                        OculusBinary b = new OculusBinary
                             { version = version.version, versionCode = version.versionCode, id = version.id, change_log = version.changeLog};
                         Download(b, appId, version.parentApplication.displayName);
                     }
@@ -1366,12 +1369,12 @@ namespace RIFT_Downgrader
                         id = b.id,
                         version = b.version,
                         version_code = b.versionCode,
-                        created_date = (long)(b.uploadedDate - new DateTime(1090, 1, 1, 0 ,0 ,0)).TotalSeconds,
+                        created_date = b.created_date,
                         binary_release_channels = new Nodes<ReleaseChannel>()
                     };
-                    for (int i = 0; i < b.releaseChannels.Count; i++)
+                    for (int i = 0; i < b.binary_release_channels.nodes.Count; i++)
                     {
-                        bin.binary_release_channels.nodes.Add(new ReleaseChannel { channel_name = b.releaseChannels[i].name, id = b.releaseChannels[i].id });
+                        bin.binary_release_channels.nodes.Add(new ReleaseChannel { channel_name = b.binary_release_channels.nodes[i].channel_name, id = b.binary_release_channels.nodes[i].id });
                     }
                     versions.Add(bin);
                 }
@@ -1441,7 +1444,7 @@ namespace RIFT_Downgrader
                     ver = ConsoleUiController.QuestionString("Which version do you want?: ");
                     foreach (OculusBinary v in versions)
                     {
-                        if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.releaseChannels.Count > 0) == null || (ver.Trim().Length <= v.versionCode.ToString().Length || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length))) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
+                        if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || (ver.Trim().Length <= v.versionCode.ToString().Length || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length))) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
                         {
                             selected = v;
                             choosen = true;
@@ -1457,7 +1460,7 @@ namespace RIFT_Downgrader
             {
                 foreach (OculusBinary v in versions)
                 {
-                    if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.releaseChannels.Count > 0) == null || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length)) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
+                    if ((ver.ToLower().StartsWith(v.version.ToLower()) && (s.versions.FirstOrDefault(x => ver.ToLower().StartsWith(x.version.ToLower()) && x.id != v.id && x.binary_release_channels.nodes.Count > 0) == null || v.versionCode.ToString() == ver.Trim().Substring(ver.Trim().Length - v.versionCode.ToString().Length)) || v.id == ver) && v.binary_release_channels.nodes.Count > 0)
                     {
                         selected = v;
                         choosen = true;
@@ -1611,13 +1614,18 @@ namespace RIFT_Downgrader
                         Console.WriteLine("Couldn't get obbs from Oculus. Unknown error. Trying with OculusDB now");
                         try
                         {
-                            DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/id/" + binary.id));
-
-                            if (version.obbBinary != null)
+                            DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + binary.id));
+                            
+                            
+                            
+                            if (version.obbList != null)
                             {
                                 List<Obb> obbs = new List<Obb>();
-                                obbs.Add(new Obb {filename = version.obbBinary.filename, bytes = version.obbBinary.size, id = version.obbBinary.id});
-                                    GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
+                                foreach (OBBBinary obbBinary in version.obbList)
+                                {
+                                    obbs.Add(new Obb {filename = obbBinary.file_name, bytes = obbBinary.sizeNumerical, id = obbBinary.id});
+                                }
+                                GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
                             }
                             else
                             {
