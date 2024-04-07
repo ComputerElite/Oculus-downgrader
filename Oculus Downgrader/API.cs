@@ -13,13 +13,13 @@ namespace Oculus.API
         public long created_date { get; set; } = 0;
         public string extraLaunchArgs { get; set; } = "";
 
-        public static ReleaseChannelReleaseBinary FromAndroidBinary(OculusBinary a)
+        public static ReleaseChannelReleaseBinary FromAndroidBinary(AndroidBinary a)
         {
             ReleaseChannelReleaseBinary b = new ReleaseChannelReleaseBinary();
             b.version = a.version;
             b.version_code = a.versionCode;
             b.id = a.id;
-            b.created_date = a.created_date ?? 0;
+            b.created_date = a.created_date;
             b.change_log = a.change_log;
             return b;
         }

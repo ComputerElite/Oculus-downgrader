@@ -9,8 +9,6 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Net;
 using System.IO.Compression;
-using System.IO.Pipes;
-using System.Net.Sockets;
 using System.Threading;
 using System.Security.Cryptography;
 using ComputerUtils.ADB;
@@ -29,15 +27,9 @@ using OculusGraphQLApiLib;
 using OculusGraphQLApiLib.Results;
 using ComputerUtils.VarUtils;
 using ComputerUtils.CommandLine;
-using OculusDB;
 using QuestPatcher.Axml;
 using OculusGraphQLApiLib.Folders;
 using OculusDB.Database;
-using OculusDB.Search;
-using OculusGraphQLApiLib.GraphQL;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.DevTools;
 
 namespace RIFT_Downgrader
 {
@@ -46,7 +38,6 @@ namespace RIFT_Downgrader
         [STAThread]
         static void Main(string[] args)
         {
-            // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
             DowngradeManager.updater = new Updater("1.11.47", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
@@ -84,19 +75,6 @@ namespace RIFT_Downgrader
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--versionstring" }, false, "VersionString of the game version to download/launch. Less precise than other version selecting", "versionstring"); // Done
             DowngradeManager.commands.AddCommandLineArgument(new List<string> { "--copyold" }, true, "If you want to backup your current install"); // Done
 
-            
-            if (args.Length == 1 && args[0].StartsWith("oculus://"))
-            {
-                string path = args[0].Replace("oculus://", "");
-                Console.WriteLine(path);
-                string[] parameters = path.Split('?')[1].Split('&');
-                string token = parameters[0].Split('=')[1];
-                string blob = parameters[1].Split('=')[1];
-                File.WriteAllText(AppDomain.CurrentDomain.BaseDirectory + "etoken_tmp.txt", blob + "|" + token);
-                Console.ReadLine();
-                return;
-            }
-            
             if(DowngradeManager.commands.HasArgument("imconfused"))
             {
                 Console.WriteLine("How DARE you be confused. Get unconfused! https://youtu.be/TMrtLsQbaok?t=188");
@@ -1340,7 +1318,7 @@ namespace RIFT_Downgrader
 				undefinedEndProgressBar.UpdateProgress("Requesting version from Oculus due to version id existing");
                 try
                 {
-                    Data<OculusBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
+                    Data<AndroidBinary> hiddenApp = GraphQLClient.GetBinaryDetails(commands.GetValue("--versionid"));
                     undefinedEndProgressBar.StopSpinningWheel();
                     Download(hiddenApp.data.node, appId, hiddenApp.data.node.binary_application.displayName);
                 }
@@ -1350,10 +1328,11 @@ namespace RIFT_Downgrader
                     Logger.Log("Request to Oculus failed. Requesting from OculusDB instead. OculusBB may not have every version: " + e);
                     try
                     {
+                        DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + commands.GetValue("--versionid")));
+                        
                         undefinedEndProgressBar.StopSpinningWheel();
-                        DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/id/" + commands.GetValue("--versionid")));
-                        OculusBinary b = new OculusBinary
-                            { version = version.version, versionCode = version.versionCode, id = version.id, change_log = version.changelog};
+                        AndroidBinary b = new AndroidBinary
+                            { version = version.version, versionCode = version.versionCode, id = version.id, change_log = version.changeLog};
                         Download(b, appId, version.parentApplication.displayName);
                     }
                     catch (Exception ex)
@@ -1376,8 +1355,8 @@ namespace RIFT_Downgrader
             {
                 if(config.requestVersionsFromOculus) throw new Exception("Forced request from Oculus");
                 
-                Logger.Log("Requesting versions from https://oculusdb-rewrite.rui2015.me/api/v2/connected/" + appId + " and adding.");
-                s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/connected/" + appId));
+                Logger.Log("Requesting versions from https://oculusdb.rui2015.me/api/v1/connected/" + appId + " and adding.");
+                s = JsonSerializer.Deserialize<ConnectedList>(webClient.DownloadString("https://oculusdb.rui2015.me/api/v1/connected/" + appId));
 
                 appName = s.applications[0].displayName;
                 foreach (DBVersion b in s.versions)
