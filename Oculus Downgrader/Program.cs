@@ -49,7 +49,7 @@ namespace RIFT_Downgrader
             // Handle oculus uri scheme
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.46", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.47", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -457,7 +457,7 @@ namespace RIFT_Downgrader
             UpdateChrome();
             ChromeDriver driver = new ChromeDriver(exe + "chrome-win64", new ChromeOptions() { });
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromMinutes(1));
-            driver.Url = "https://oculusdb-rewrite.rui2015.me/search?query=Beat%20Saber&isoculusdowngrader=yesofcitis";
+            driver.Url = "https://oculusdb.rui2015.me/search?query=Beat%20Saber&isoculusdowngrader=yesofcitis";
             string cmd = "";
             string last = driver.Url;
             while (cmd == "")
@@ -1350,9 +1350,8 @@ namespace RIFT_Downgrader
                     Logger.Log("Request to Oculus failed. Requesting from OculusDB instead. OculusBB may not have every version: " + e);
                     try
                     {
-                        DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/id/" + commands.GetValue("--versionid")));
-                        
                         undefinedEndProgressBar.StopSpinningWheel();
+                        DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb-rewrite.rui2015.me/api/v2/id/" + commands.GetValue("--versionid")));
                         OculusBinary b = new OculusBinary
                             { version = version.version, versionCode = version.versionCode, id = version.id, change_log = version.changelog};
                         Download(b, appId, version.parentApplication.displayName);
