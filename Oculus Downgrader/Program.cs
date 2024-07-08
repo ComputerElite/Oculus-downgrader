@@ -43,7 +43,7 @@ namespace RIFT_Downgrader
         {
             Logger.SetLogFile(AppDomain.CurrentDomain.BaseDirectory + "Log.log");
             SetupExceptionHandlers();
-            DowngradeManager.updater = new Updater("1.11.48", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
+            DowngradeManager.updater = new Updater("1.11.49", "https://github.com/ComputerElite/Oculus-downgrader", "Oculus Downgrader", Assembly.GetExecutingAssembly().Location);
             Logger.LogRaw("\n\n");
             Logger.Log("Starting Oculus Downgrader version " + DowngradeManager.updater.version);
             if (args.Length == 1 && args[0] == "--update")
@@ -1609,36 +1609,59 @@ namespace RIFT_Downgrader
 						}
 					} catch(Exception e)
                     {
-                        Logger.Log("Couldn't get obbs. Trying to get from OculusDB next: " + e.ToString(), LoggingType.Warning);
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Couldn't get obbs from Oculus. Unknown error. Trying with OculusDB now");
-                        try
-                        {
-                            DBVersion version = JsonSerializer.Deserialize<DBVersion>(new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" + binary.id));
-                            
-                            
-                            
-                            if (version.obbList != null)
-                            {
-                                List<Obb> obbs = new List<Obb>();
-                                foreach (OBBBinary obbBinary in version.obbList)
-                                {
-                                    obbs.Add(new Obb {filename = obbBinary.file_name, bytes = obbBinary.sizeNumerical, id = obbBinary.id});
-                                }
-                                GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
-                            }
-                            else
-                            {
-                                Logger.Log("OBB List has 0 entries. Downloading nothing");
-                                Console.WriteLine("No obbs to download");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log("Request to OculusDB failed too: " + ex);
+                            Logger.Log("Couldn't get obbs via fallback. Trying to get from OculusDB next: " + e.ToString(), LoggingType.Warning);
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine("Request to OculusDB and Oculus failed. Could not check if obbs are needed.");
-                        }
+                            Console.WriteLine("Couldn't get obbs from Oculus. Unknown error. Trying with OculusDB now");
+                            try
+                            {
+                                DBVersion version = JsonSerializer.Deserialize<DBVersion>(
+                                    new WebClient().DownloadString("https://oculusdb.rui2015.me/api/v1/id/" +
+                                                                   binary.id));
+                                if (version.obbList != null)
+                                {
+                                    List<Obb> obbs = new List<Obb>();
+                                    foreach (OBBBinary obbBinary in version.obbList)
+                                    {
+                                        obbs.Add(new Obb {filename = obbBinary.file_name, bytes = obbBinary.sizeNumerical, id = obbBinary.id});
+                                    }
+                                    GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
+                                }
+                                else
+                                {
+                                    Logger.Log("OBB List has 0 entries. Checking fallback oculus");
+                                    Console.WriteLine("No obbs on OculusDB, checking fallback on Oculus");
+                                    try
+                                    {
+                                        Data<OculusBinary> b = GraphQLClient.GetMoreBinaryDetails(binary.id);
+                                        if (b.data.node != null)
+                                        {
+                                            if (b.data.node.obb_binary == null)
+                                            {
+                                                Logger.Log("No obbs to download according to fallback");
+                                                Console.WriteLine("No obbs to download");
+                                            }
+                                            else
+                                            {
+                                                   
+                                                List<Obb> obbs = new List<Obb>{new Obb {bytes = b.data.node.obb_binary.sizeNumerical, filename = b.data.node.obb_binary.file_name, id = b.data.node.obb_binary.id}};
+                                                GameDownloader.DownloadObbFiles(baseDirectory + "obbs" + Path.DirectorySeparatorChar, DecryptToken(), obbs);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception e2)
+                                    {
+                                        Logger.Log("Fallback failed, we'll just assume there are no obbs to download: " + e2);
+                                        Console.Write("Failed to get obbs from OculusDB and Oculus. Assuming there are no obbs to download.");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log("Request to OculusDB failed too: " + ex);
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine("Request to OculusDB and Oculus failed. Could not check if obbs are needed.");
+                            }
+                        
                     }
                     
                 }
