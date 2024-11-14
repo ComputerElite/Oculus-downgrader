@@ -399,7 +399,8 @@ namespace RIFT_Downgrader
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
                 "Show Oculus token (Do not share)",
                 "Export token to OculusDB (this will submit your token to OculusDB's server but it won't get stored. Alternatively save it yourself at the utils page. This will not send it to the server)",
-                "Login with Rift App"
+                "Login with Rift App", 
+                "Login with login uri"
             });
             switch(choice)
             {
@@ -433,7 +434,17 @@ namespace RIFT_Downgrader
                 case "4":
                     LoginWithRiftApp();
                     break;
+                case "5":
+                    LoginWithUri();
+                    break;
             }
+        }
+
+        private void LoginWithUri()
+        {
+            string loginUrl = ConsoleUiController.SecureQuestionString("Enter the login uri: ");
+            LoginClient client = new LoginClient();
+            CheckAndSetToken(client.UriCallback(loginUrl));
         }
 
         public void OculusDB()
