@@ -398,8 +398,8 @@ namespace RIFT_Downgrader
             {
                 "Show developer only versions you got access to (currently " + config.requestVersionsFromOculus + ")",
                 "Show Oculus token (Do not share)",
-                "Export token to OculusDB (this will submit your token to OculusDB's server but it won't get stored. Alternatively save it yourself at the utils page. This will not send it to the server)"
-                
+                "Export token to OculusDB (this will submit your token to OculusDB's server but it won't get stored. Alternatively save it yourself at the utils page. This will not send it to the server)",
+                "Login with Rift App"
             });
             switch(choice)
             {
@@ -429,6 +429,9 @@ namespace RIFT_Downgrader
                         FileName = url
                     };
                     Process.Start(info);
+                    break;
+                case "4":
+                    LoginWithRiftApp();
                     break;
             }
         }
@@ -489,6 +492,14 @@ namespace RIFT_Downgrader
             }
             a.Dispose();
             File.WriteAllText(exe + "chromeversion.txt", "120");
+        }
+
+        public void LoginWithRiftApp()
+        {
+            string RiftAppToken = ConsoleUiController.SecureQuestionString("Input your rift app token");
+            LoginClient c = new LoginClient();
+            Console.WriteLine("Trying to upgrade token, please wait a sec");
+            CheckAndSetToken(c.SecondStage(RiftAppToken));
         }
 
         // It just works
@@ -1754,7 +1765,11 @@ namespace RIFT_Downgrader
                 }
             }
 
-           
+            return CheckAndSetToken(at);
+        }
+
+        public bool CheckAndSetToken(string at)
+        {
             at = at.Replace(" ", "");
             if (TokenTools.IsUserTokenValid(at))
             {
