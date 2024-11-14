@@ -3,7 +3,5 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/OculusDB" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/OculusDB/OculusGraphQLApiLib" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/OculusDB/OculusGraphQLApiLib/ComputerUtils" vcs="Git" />
   </component>
 </project>
