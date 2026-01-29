@@ -32,7 +32,7 @@ jobs:
     - name: Delete frontend
       run: rm -r 'Oculus Downgrader/bin/Debug/net6.0/frontend'
     - name: Upload net6.0.zip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: net6.0
         path: 'Oculus Downgrader/bin/Debug/net6.0'
