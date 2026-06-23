@@ -385,9 +385,8 @@ namespace RIFT_Downgrader
 					}
                 } else
                 {
-                    Error("Token is needed to continue. Please press any key to exit.");
-                    Console.ReadLine();
-                    Environment.Exit(0);
+                    Error("Token is needed to continue. Putting you in settings.");
+                    Settings();
                 }
             }
         }
